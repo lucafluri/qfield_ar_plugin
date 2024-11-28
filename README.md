@@ -1,1 +1,1 @@
-"# qfield_ar_plugin" 
+# qfield_ar_plugin
