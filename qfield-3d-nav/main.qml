@@ -194,8 +194,9 @@ Item {
 
     Text {
       id: gpsPositionText
-      anchors.top: tiltReadingText.bottom
+      anchors.top: parent.top
       anchors.left: parent.left
+      anchors.margins: 10
       text: 'Longitude: ' + plugin.currentPosition.coordinate.longitude + ', Latitude: ' + plugin.currentPosition.coordinate.latitude
       font: Theme.defaultFont
       color: "white"
@@ -205,6 +206,7 @@ Item {
       id: gpsAccuracyText
       anchors.top: gpsPositionText.bottom
       anchors.left: parent.left
+      anchors.margins: 10
       text: 'Accuracy: ' + positionSource.position.horizontalAccuracy
       font: Theme.defaultFont
       color: "white"
