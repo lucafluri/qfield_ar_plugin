@@ -59,6 +59,9 @@ Item {
                 [x, y, -5]
               ]
         }
+
+        gpsPositionText.text = 'GPS Position: ' + x + ', ' + y
+        gpsAccuracyText.text = 'Accuracy: ' + positionSource.positionInformation.horizontalAccuracy
       }
     }
   }
@@ -104,6 +107,9 @@ Item {
               [x, y, 5],
               [x, y, -5]
             ]
+
+        gpsPositionText.text = 'GPS Position: ' + x + ', ' + y
+        gpsAccuracyText.text = 'Accuracy: ' + positionSource.positionInformation.horizontalAccuracy
       }
     }
 
@@ -184,6 +190,24 @@ Item {
       text: ''
       font: Theme.defaultFont
       color: "red"// "white"
+    }
+
+    Text {
+      id: gpsPositionText
+      anchors.top: tiltReadingText.bottom
+      anchors.left: parent.left
+      text: 'GPS Position: ' + plugin.currentPosition[0] + ', ' + plugin.currentPosition[1]
+      font: Theme.defaultFont
+      color: "white"
+    }
+
+    Text {
+      id: gpsAccuracyText
+      anchors.top: gpsPositionText.bottom
+      anchors.left: parent.left
+      text: 'Accuracy: ' + positionSource.positionInformation.horizontalAccuracy
+      font: Theme.defaultFont
+      color: "white"
     }
 
     TiltSensor {
