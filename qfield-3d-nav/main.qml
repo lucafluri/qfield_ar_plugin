@@ -196,7 +196,7 @@ Item {
       id: gpsPositionText
       anchors.top: tiltReadingText.bottom
       anchors.left: parent.left
-      text: 'GPS Position: ' + plugin.currentPosition[0] + ', ' + plugin.currentPosition[1]
+      text: 'GPS Position: ' + currentPosition[0] + ', ' + currentPosition[1]
       font: Theme.defaultFont
       color: "green"
     }
