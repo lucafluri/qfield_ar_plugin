@@ -202,7 +202,7 @@ Item {
     }
 
     Text {
-      id: gpsPositionText
+      id: gpsAccuracyText
       anchors.top: gpsPositionText.bottom
       anchors.left: parent.left
       text: 'Accuracy: ' + positionSource.supportedPositioningMethods 
