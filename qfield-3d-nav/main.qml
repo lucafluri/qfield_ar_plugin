@@ -109,7 +109,7 @@ Item {
             ]
 
         gpsPositionText.text = 'GPS Position: ' + x + ', ' + y
-        gpsAccuracyText.text = 'Accuracy: ' + positionSource.positionInformation.horizontalAccuracy
+        gpsAccuracyText.text = 'Accuracy: ' + positionSource.supportedPositioningMethods 
       }
     }
 
@@ -196,16 +196,16 @@ Item {
       id: gpsPositionText
       anchors.top: tiltReadingText.bottom
       anchors.left: parent.left
-      text: 'GPS Position: ' + plugin.currentPosition[0].coordinate.longitude + ', ' + plugin.currentPosition[1].coordinate.latitude
+      text: 'GPS Position: ' + plugin.currentPosition.coordinate.longitude + ', ' + plugin.currentPosition.coordinate.latitude
       font: Theme.defaultFont
       color: "white"
     }
 
     Text {
-      id: gpsAccuracyText
+      id: gpsPositionText
       anchors.top: gpsPositionText.bottom
       anchors.left: parent.left
-      text: 'Accuracy: ' + positionSource.supportedPositioningMethods
+      text: 'Accuracy: ' + positionSource.supportedPositioningMethods 
       font: Theme.defaultFont
       color: "white"
     }
