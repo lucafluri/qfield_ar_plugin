@@ -1,0 +1,7 @@
+[general]
+name=3D Navigation
+description=...
+author=OPENGIS.ch
+icon=icon.svg
+version=1.0
+homepage=https://www.opengis.ch/
