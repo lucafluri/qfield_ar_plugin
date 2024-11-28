@@ -196,7 +196,7 @@ Item {
       id: gpsPositionText
       anchors.top: tiltReadingText.bottom
       anchors.left: parent.left
-      text: 'GPS Position: ' + plugin.currentPosition[0] + ', ' + plugin.currentPosition[1]
+      text: 'GPS Position: ' + plugin.currentPosition[0].coordinate.longitude + ', ' + plugin.currentPosition[1].coordinate.latitude
       font: Theme.defaultFont
       color: "white"
     }
@@ -205,7 +205,7 @@ Item {
       id: gpsAccuracyText
       anchors.top: gpsPositionText.bottom
       anchors.left: parent.left
-      text: 'Accuracy: ' + positionSource.positionInformation.horizontalAccuracy
+      text: 'Accuracy: ' + positionSource.supportedPositioningMethods
       font: Theme.defaultFont
       color: "white"
     }
