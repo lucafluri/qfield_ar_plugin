@@ -196,7 +196,7 @@ Item {
       id: gpsPositionText
       anchors.top: tiltReadingText.bottom
       anchors.left: parent.left
-      text: 'GPS Position: ' + currentPosition[0] + ', ' + currentPosition[1]
+      text: 'GPS Position: ' + QgsCoordinateReferenceSystem.convertFromWgs84(QgsPointXY(currentPosition[0], currentPosition[1]), QgsCoordinateReferenceSystem('EPSG:21781')).toString()
       font: Theme.defaultFont
       color: "green"
     }
