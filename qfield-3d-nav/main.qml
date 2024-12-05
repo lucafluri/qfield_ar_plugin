@@ -142,6 +142,7 @@ Item {
       }
 
       PerspectiveCamera {
+        id: camera
         position: Qt.vector3d(0, 0, 1.25)
         rotation: Quaternion.fromAxesAndAngles(Qt.vector3d(1,0,0), plugin.currentTilt, Qt.vector3d(0,1,0), 0, Qt.vector3d(0,0,1), -plugin.currentOrientation)
         clipNear: 0.01
@@ -196,7 +197,7 @@ Item {
       id: gpsPositionText
       anchors.top: tiltReadingText.bottom
       anchors.left: parent.left
-      text: 'GPS Position: ' + QgsCoordinateReferenceSystem.convertFromWgs84(QgsPointXY(currentPosition[0], currentPosition[1]), QgsCoordinateReferenceSystem('EPSG:21781')).toString()
+      text: 'GPS Position: ' + currentPosition[0] + ', ' + currentPosition[1]
       font: Theme.defaultFont
       color: "green"
     }
@@ -214,17 +215,26 @@ Item {
       id: tiltSensor
       active: threeDNavigationPopup.visible
       property var tilts: []
+      property var stableThreshold: 0.5 // Define a threshold for stability
       onReadingChanged: {
         let tilt = reading.xRotation
         tilts.push(tilt)
         if (tilts.length > 5) {
           tilts.shift()
         }
-        let sum = 0
-        for (const t of tilts) {
-          sum += t
+        
+        // Calculate average tilt
+        let averageTilt = tilts.reduce((a, b) => a + b, 0) / tilts.length
+        
+        // Check if the device is stable
+        let isStable = Math.max(...tilts) - Math.min(...tilts) < stableThreshold
+        
+        if (isStable) {
+          // Adjust the 3D view based on the average tilt
+          camera.rotation = Quaternion.fromAxesAndAngles(Qt.vector3d(1,0,0), averageTilt, Qt.vector3d(0,1,0), 0, Qt.vector3d(0,0,1), -plugin.currentOrientation)
         }
-        plugin.currentTilt = sum / tilts.length
+        
+        plugin.currentTilt = averageTilt
         tiltReadingText.text = 'current orientation: ' + plugin.currentOrientation + '\ncurrent tilt: ' + plugin.currentTilt
       }
     }
