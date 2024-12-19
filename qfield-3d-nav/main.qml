@@ -14,6 +14,7 @@ Item {
 
   property var mainWindow: iface.mainWindow()
   property var positionSource: iface.findItemByObjectName('positionSource')
+  property var testPipesLayer: iface.project.mapLayer("test_pipes")
 
   property bool initiated: false
   property var points: []
@@ -148,21 +149,77 @@ Item {
         clipNear: 0.01
       }
 
-      Repeater3D {
-        model: plugin.points
+      Node {
+        // Original points for reference
+        Repeater3D {
+          model: plugin.points
 
-        delegate: Model {
-          position: Qt.vector3d(modelData[0] - plugin.currentPosition[0], modelData[1] - plugin.currentPosition[1], modelData[2])
-          source: "#Sphere"
-          scale: Qt.vector3d(0.005, 0.005, 0.005)
+          delegate: Model {
+            position: Qt.vector3d(modelData[0] - plugin.currentPosition[0], modelData[1] - plugin.currentPosition[1], modelData[2])
+            source: "#Sphere"
+            scale: Qt.vector3d(0.005, 0.005, 0.005)
 
-          materials: PrincipledMaterial {
-            baseColor: index == 0 ? Theme.accuracyTolerated : index == plugin.points.length - 1 ? Theme.accuracyBad : Theme.mainColor
-            roughness: 0.5
+            materials: PrincipledMaterial {
+              baseColor: index == 0 ? Theme.accuracyTolerated : index == plugin.points.length - 1 ? Theme.accuracyBad : Theme.mainColor
+              roughness: 0.5
+            }
+          }
+        }
+
+        // Pipes layer visualization
+        Repeater3D {
+          model: {
+            if (!testPipesLayer) return [];
+            let features = [];
+            let iterator = testPipesLayer.getFeatures();
+            let feature;
+            while ((feature = iterator.nextFeature())) {
+              let geometry = feature.geometry;
+              if (geometry.type() === QgsWkbTypes.LineString) {
+                let points = geometry.asPolyline();
+                for (let i = 0; i < points.length - 1; i++) {
+                  features.push({
+                    start: points[i],
+                    end: points[i + 1]
+                  });
+                }
+              }
+            }
+            return features;
           }
 
-          Component.onCompleted: {
-            console.log(position)
+          delegate: Model {
+            required property var start
+            required property var end
+
+            // Calculate position and rotation for the cylinder
+            position: {
+              let midX = (start.x + end.x) / 2 - plugin.currentPosition[0];
+              let midY = (start.y + end.y) / 2 - plugin.currentPosition[1];
+              return Qt.vector3d(midX, midY, 0);
+            }
+
+            // Calculate rotation to align cylinder with line segment
+            rotation: {
+              let dx = end.x - start.x;
+              let dy = end.y - start.y;
+              let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+              return Qt.quaternion.fromEulerAngles(0, 0, angle);
+            }
+
+            // Calculate scale based on line length
+            scale: {
+              let dx = end.x - start.x;
+              let dy = end.y - start.y;
+              let length = Math.sqrt(dx * dx + dy * dy);
+              return Qt.vector3d(length, 0.002, 0.002); // Adjust cylinder thickness with y and z scale
+            }
+
+            source: "#Cylinder"
+            materials: PrincipledMaterial {
+              baseColor: "blue"
+              roughness: 0.3
+            }
           }
         }
       }
