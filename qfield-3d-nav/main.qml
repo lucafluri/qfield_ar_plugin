@@ -14,7 +14,7 @@ Item {
 
   property var mainWindow: iface.mainWindow()
   property var positionSource: iface.findItemByObjectName('positionSource')
-  property var testPipesLayer: iface.project.mapLayer("test_pipes")
+  property var testPipesLayer: iface.project.mapLayer("test_pipes_7c949ab3_406c_4607_b59c_36bf19fd1a19")
 
   property bool initiated: false
   property var points: []
