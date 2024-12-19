@@ -14,7 +14,7 @@ Item {
 
   property var mainWindow: iface.mainWindow()
   property var positionSource: iface.findItemByObjectName('positionSource')
-    property var testPipesLayer: iface.project.mapLayer("test_pipes_7c949ab3_406c_4607_b59c_36bf19fd1a19")
+  property var testPipesLayer
 
   property bool initiated: false
   property var points: []
@@ -281,6 +281,14 @@ Item {
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
       text: {
+        let layers = QgsProject.instance().mapLayersByName("test_pipes");
+        if (layers.length > 0) {
+            testPipesLayer = layers[0]; // Get the first layer with this name
+            return ("testPipesLayer loaded successfully:", testPipesLayer.name());
+        } else {
+            return ("Error: testPipesLayer not found.");
+        }
+
         if (!testPipesLayer) return 'No pipe layer found';
         let count = 0;
         let iterator = testPipesLayer.getFeatures();
