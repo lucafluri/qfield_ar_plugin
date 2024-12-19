@@ -284,12 +284,12 @@ Item {
         let layers = QgsProject.instance().mapLayersByName("test_pipes");
         if (layers.length > 0) {
             testPipesLayer = layers[0]; // Get the first layer with this name
-            return ("testPipesLayer loaded successfully:", testPipesLayer.name());
+            return 'testPipesLayer loaded successfully:', testPipesLayer.name();
         } else {
-            return ("Error: testPipesLayer not found.");
+            return 'Error: testPipesLayer not found.';
         }
 
-        if (!testPipesLayer) return 'No pipe layer found';
+        // if (!testPipesLayer) return 'No pipe layer found';
         let count = 0;
         let iterator = testPipesLayer.getFeatures();
         let feature;
