@@ -268,6 +268,28 @@ Item {
       color: "white"
     }
 
+    Text {
+      id: pipeSegmentsText
+      anchors.top: gpsAccuracyText.bottom
+      anchors.left: parent.left
+      text: {
+        if (!testPipesLayer) return 'No pipe layer found';
+        let count = 0;
+        let iterator = testPipesLayer.getFeatures();
+        let feature;
+        while ((feature = iterator.nextFeature())) {
+          let geometry = feature.geometry;
+          if (geometry.type() === QgsWkbTypes.LineString) {
+            let points = geometry.asPolyline();
+            count += points.length - 1; // Each line has n-1 segments where n is number of points
+          }
+        }
+        return 'Pipe segments: ' + count;
+      }
+      font: Theme.defaultFont
+      color: "white"
+    }
+
     TiltSensor {
       id: tiltSensor
       active: threeDNavigationPopup.visible
