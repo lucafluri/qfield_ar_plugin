@@ -273,6 +273,7 @@ Item {
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
       text: {
+        return testPipesLayer;
         if (!testPipesLayer) return 'No pipe layer found';
         let count = 0;
         let iterator = testPipesLayer.getFeatures();
