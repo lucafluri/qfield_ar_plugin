@@ -27,7 +27,7 @@ Item {
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
     // Attempt to access the layer by name using LayerUtils from org.qfield
-    testPipesLayer = iface.layerUtils.layerById("test_pipes")
+    testPipesLayer = iface.layerUtils.layerById("test_pipes_7c949ab3_406c_4607_b59c_36bf19fd1a19")
     if (testPipesLayer) { 
       console.log("testPipesLayer loaded successfully:", testPipesLayer.name)
     } else {
