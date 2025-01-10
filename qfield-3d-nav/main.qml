@@ -8,7 +8,6 @@ import QtSensors
 import org.qfield
 import org.qgis
 import Theme
-import org.qgis.utils
 
 Item {
   id: plugin
@@ -27,8 +26,8 @@ Item {
 
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
-    // Attempt to access the layer by name using LayerUtils
-    testPipesLayer = LayerUtils.layerById(QgsProject.instance, "test_pipes")
+    // Attempt to access the layer by name using LayerUtils from org.qfield
+    testPipesLayer = iface.layerUtils.layerById("test_pipes")
     if (testPipesLayer) {
       console.log("testPipesLayer loaded successfully:", testPipesLayer.name)
     } else {
