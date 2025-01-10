@@ -26,12 +26,37 @@ Item {
 
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
-    // Attempt to access the layer by name using LayerUtils from org.qfield
-    testPipesLayer = iface.layerUtils.layerById("test_pipes_7c949ab3_406c_4607_b59c_36bf19fd1a19")
-    if (testPipesLayer) { 
-      console.log("testPipesLayer loaded successfully:", testPipesLayer.name)
-    } else {
-      console.log("Error: testPipesLayer not found.")
+    
+    // Try both approaches to find the layer
+    // First try: Using project's mapLayers
+    let layers = iface.project.mapLayers()
+    for (let layerId in layers) {
+        let layer = layers[layerId]
+        console.log("Found layer:", layer.name)  // Debug log
+        if (layer.name.toLowerCase().includes("test_pipes")) {
+            testPipesLayer = layer
+            console.log("testPipesLayer loaded successfully from mapLayers:", layer.name)
+            break
+        }
+    }
+    
+    // Second try: Using layer tree if first approach failed
+    if (!testPipesLayer) {
+        let root = iface.project.layerTreeRoot()
+        let layerNodes = root.findLayers()
+        for (let node of layerNodes) {
+            let layer = node.layer
+            console.log("Found layer in tree:", layer.name)  // Debug log
+            if (layer.name.toLowerCase().includes("test_pipes")) {
+                testPipesLayer = layer
+                console.log("testPipesLayer loaded successfully from layer tree:", layer.name)
+                break
+            }
+        }
+    }
+    
+    if (!testPipesLayer) {
+        console.log("Error: testPipesLayer not found in either mapLayers or layer tree")
     }
   }
 
