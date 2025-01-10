@@ -28,7 +28,7 @@ Item {
     iface.addItemToPluginsToolbar(pluginButton)
     // Attempt to access the layer by name using LayerUtils from org.qfield
     testPipesLayer = iface.layerUtils.layerById("test_pipes")
-    if (testPipesLayer) {
+    if (testPipesLayer) { 
       console.log("testPipesLayer loaded successfully:", testPipesLayer.name)
     } else {
       console.log("Error: testPipesLayer not found.")
