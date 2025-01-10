@@ -27,12 +27,16 @@ Item {
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
     // Attempt to access the layer by name
-    let layers = QgsProject.instance().mapLayersByName("test_pipes");
-    if (layers.length > 0) {
-        testPipesLayer = layers[0]; // Get the first layer with this name
+    let layers = iface.mainWindow().mapCanvas().layers();
+    for (let i = 0; i < layers.length; i++) {
+      if (layers[i].name() === "test_pipes") {
+        testPipesLayer = layers[i];
         console.log("testPipesLayer loaded successfully:", testPipesLayer.name());
-    } else {
-        console.log("Error: testPipesLayer not found.");
+        break;
+      }
+    }
+    if (!testPipesLayer) {
+      console.log("Error: testPipesLayer not found.");
     }
   }
 
