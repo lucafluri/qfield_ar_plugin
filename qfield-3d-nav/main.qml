@@ -10,164 +10,355 @@ import org.qgis
 import Theme
 
 Item {
-    id: plugin
+  id: plugin
 
-    property var mainWindow: iface.mainWindow()
-    property var positionSource: iface.findItemByObjectName('positionSource')
-    property var testPipesLayer: null
-    property var testPipesFeatures: []
+  property var mainWindow: iface.mainWindow()
+  property var positionSource: iface.findItemByObjectName('positionSource')
+  property var testPipesLayer
 
-    property bool initiated: false
-    property var points: []
+  property bool initiated: false
+  property var points: []
 
-    property var positions: []
-    property var currentPosition: [0,0,0]
-    property double currentOrientation: 0
-    property double currentTilt: 90
+  property var positions: []
+  property var currentPosition: [0,0,0]
+  property double currentOrientation: 0
+  property double currentTilt: 90
 
-    Component.onCompleted: {
-        iface.addItemToPluginsToolbar(pluginButton)
-        
-        // Get the layer by name
-        testPipesLayer = iface.layerUtils.layerById("test_pipes")
-        
-        if (testPipesLayer) {
-            console.log("testPipesLayer loaded successfully:", testPipesLayer.name)
-            loadPipeFeatures()
-        } else {
-            console.log("Error: testPipesLayer not found.")
+  Component.onCompleted: {
+    iface.addItemToPluginsToolbar(pluginButton)
+    // Attempt to access the layer by name using LayerUtils from org.qfield
+    testPipesLayer = iface.layerUtils.layerById("test_pipes")
+    if (testPipesLayer) { 
+      console.log("testPipesLayer loaded successfully:", testPipesLayer.name)
+    } else {
+      console.log("Error: testPipesLayer not found.")
+    }
+  }
+
+  Connections {
+    target: positionSource
+    enabled: threeDNavigationPopup.visible
+
+    function onProjectedPositionChanged() {
+      if (positionSource.active && positionSource.positionInformation.longitudeValid && positionSource.positionInformation.latitudeValid) {
+        plugin.positions.push(positionSource.projectedPosition)
+        if (plugin.positions.length > 5) {
+          plugin.positions.shift()
         }
+
+        let x = 0
+        let y = 0
+        for (const p of plugin.positions) {
+          x += p.x
+          y += p.y
+        }
+        x = x / plugin.positions.length
+        y = y / plugin.positions.length
+        plugin.currentPosition = [x, y, 0]
+
+        if (!plugin.initiated) {
+          plugin.initiated = true
+          plugin.points = [
+                [x + 5, y, 0],
+                [x, y + 5, 0],
+                [x - 5, y, 0],
+                [x, y - 5, 0],
+                [x, y, 5],
+                [x, y, -5]
+              ]
+        }
+
+        gpsPositionText.text = 'GPS Position: ' + x + ', ' + y
+        gpsAccuracyText.text = 'Accuracy: ' + positionSource.supportedPositioningMethods 
+      }
+    }
+  }
+
+  QfToolButton {
+    id: pluginButton
+    iconSource: 'icon.svg'
+    iconColor: "white"
+    bgcolor: Theme.darkGray
+    round: true
+
+    onClicked: {
+      threeDNavigationPopup.open();
+    }
+  }
+
+  Popup {
+    id: threeDNavigationPopup
+
+    parent: mainWindow.contentItem
+    width: Math.min(mainWindow.width, mainWindow.height) - 40
+    height: width
+    x: (mainWindow.width - width) / 2
+    y: (mainWindow.height - height) / 2
+
+    onAboutToHide: {
+      plugin.initiated = false
+      plugin.points = []
+      plugin.positions = []
     }
 
-    function loadPipeFeatures() {
-        if (!testPipesLayer) return
-        
-        // Clear existing features
-        testPipesFeatures = []
-        
-        // Get all features from the layer
-        const features = testPipesLayer.getFeatures()
-        for (let feature of features) {
-            const geometry = feature.geometry()
-            const attributes = feature.attributes()
-            
-            // Store feature data as needed
-            testPipesFeatures.push({
-                geometry: geometry,
-                attributes: attributes
-            })
-            
-            console.log("Loaded pipe feature:", attributes)
-        }
+    onAboutToShow: {
+      if (positionSource.active) {
+        let x = positionSource.projectedPosition.x
+        let y = positionSource.projectedPosition.y
+
+        plugin.currentPosition = [x, y, 0]
+        plugin.points = [
+              [x + 5, y, 0],
+              [x, y + 5, 0],
+              [x - 5, y, 0],
+              [x, y - 5, 0],
+              [x, y, 5],
+              [x, y, -5]
+            ]
+
+        gpsPositionText.text = 'GPS Position: ' + x + ', ' + y
+        gpsAccuracyText.text = 'Accuracy: ' + positionSource.sourceError  
+      }
     }
 
-    function findNearestPipe(position) {
-        if (!testPipesLayer || testPipesFeatures.length === 0) return null
-        
-        let nearestPipe = null
-        let minDistance = Infinity
-        
-        for (let feature of testPipesFeatures) {
-            const distance = calculateDistance(position, feature.geometry)
-            if (distance < minDistance) {
-                minDistance = distance
-                nearestPipe = feature
+    CaptureSession {
+      id: captureSession
+      camera: Camera {
+        active: threeDNavigationPopup.visible
+        flashMode: Camera.FlashOff
+      }
+      videoOutput: videoOutput
+    }
+
+    VideoOutput {
+      id: videoOutput
+      width: 100
+      height: 100
+      anchors.fill: parent
+      fillMode: VideoOutput.PreserveAspectCrop
+    }
+
+    View3D {
+      anchors.fill: parent
+
+      environment: SceneEnvironment {
+              antialiasingMode: SceneEnvironment.ProgressiveAA
+      }
+
+      PointLight {
+        position: Qt.vector3d(0, 0, 0)
+      }
+
+      PerspectiveCamera {
+        id: camera
+        position: Qt.vector3d(0, 0, 1.25)
+        rotation: Quaternion.fromAxesAndAngles(Qt.vector3d(1,0,0), plugin.currentTilt, Qt.vector3d(0,1,0), 0, Qt.vector3d(0,0,1), -plugin.currentOrientation)
+        clipNear: 0.01
+      }
+
+      Node {
+        // Original points for reference
+        Repeater3D {
+          model: plugin.points
+
+          delegate: Model {
+            position: Qt.vector3d(modelData[0] - plugin.currentPosition[0], modelData[1] - plugin.currentPosition[1], modelData[2])
+            source: "#Sphere"
+            scale: Qt.vector3d(0.005, 0.005, 0.005)
+
+            materials: PrincipledMaterial {
+              baseColor: index == 0 ? Theme.accuracyTolerated : index == plugin.points.length - 1 ? Theme.accuracyBad : Theme.mainColor
+              roughness: 0.5
             }
+          }
         }
-        
-        return nearestPipe
-    }
 
-    Connections {
-        target: positionSource
-        enabled: threeDNavigationPopup.visible
-
-        function onProjectedPositionChanged() {
-            if (positionSource.active && positionSource.positionInformation.longitudeValid && positionSource.positionInformation.latitudeValid) {
-                plugin.positions.push(positionSource.projectedPosition)
-                if (plugin.positions.length > 5) {
-                    plugin.positions.shift()
+        // Pipes layer visualization
+        Repeater3D {
+          model: {
+            if (!testPipesLayer) return [];
+            let features = [];
+            let iterator = testPipesLayer.getFeatures();
+            let feature;
+            while ((feature = iterator.nextFeature())) {
+              let geometry = feature.geometry;
+              if (geometry.type() === QgsWkbTypes.LineString) {
+                let points = geometry.asPolyline();
+                for (let i = 0; i < points.length - 1; i++) {
+                  features.push({
+                    start: points[i],
+                    end: points[i + 1]
+                  });
                 }
-
-                let x = 0
-                let y = 0
-                for (const p of plugin.positions) {
-                    x += p[0]
-                    y += p[1]
-                }
-                x /= plugin.positions.length
-                y /= plugin.positions.length
-
-                plugin.currentPosition = [x, y, 0]
-
-                // Find nearest pipe when position updates
-                const nearestPipe = findNearestPipe(plugin.currentPosition)
-                if (nearestPipe) {
-                    console.log("Nearest pipe found:", nearestPipe.attributes)
-                }
+              }
             }
+            return features;
+          }
+
+          delegate: Model {
+            required property var start
+            required property var end
+
+            // Calculate position and rotation for the cylinder
+            position: {
+              let midX = (start.x + end.x) / 2 - plugin.currentPosition[0];
+              let midY = (start.y + end.y) / 2 - plugin.currentPosition[1];
+              return Qt.vector3d(midX, midY, 0);
+            }
+
+            // Calculate rotation to align cylinder with line segment
+            rotation: {
+              let dx = end.x - start.x;
+              let dy = end.y - start.y;
+              let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+              return Qt.quaternion.fromEulerAngles(0, 0, angle);
+            }
+
+            // Calculate scale based on line length
+            scale: {
+              let dx = end.x - start.x;
+              let dy = end.y - start.y;
+              let length = Math.sqrt(dx * dx + dy * dy);
+              return Qt.vector3d(length, 0.002, 0.002); // Adjust cylinder thickness with y and z scale
+            }
+
+            source: "#Cylinder"
+            materials: PrincipledMaterial {
+              baseColor: "blue"
+              roughness: 0.3
+            }
+          }
         }
+      }
     }
 
-    Button {
-        id: pluginButton
-        text: "3D Navigation"
-        onClicked: {
-            threeDNavigationPopup.visible = !threeDNavigationPopup.visible
-        }
+    QfToolButton {
+      anchors.top: parent.top
+      anchors.right: parent.right
+      anchors.margins: 5
+
+      round: true
+      iconSource: Theme.getThemeVectorIcon('ic_close_white_24dp')
+      iconColor: "White"
+      bgcolor: Theme.darkGray
+
+      onClicked: {
+        threeDNavigationPopup.close();
+      }
     }
 
-    Popup {
-        id: threeDNavigationPopup
+    Text {
+      id: tiltReadingText
+      anchors.bottom: parent.bottom
+      anchors.left: parent.left
 
-        parent: mainWindow.contentItem
-        width: Math.min(mainWindow.width, mainWindow.height) - 40
-        height: width
-        anchors.centerIn: parent
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        View3D {
-            id: view3D
-            anchors.fill: parent
-
-            environment: SceneEnvironment {
-                clearColor: "skyblue"
-                backgroundMode: SceneEnvironment.Color
-            }
-
-            PerspectiveCamera {
-                id: camera
-                position: Qt.vector3d(0, 0, 600)
-            }
-
-            DirectionalLight {
-                position: Qt.vector3d(-500, 500, -100)
-                color: Qt.rgba(0.4, 0.2, 0.6, 1.0)
-                ambientColor: Qt.rgba(0.1, 0.1, 0.1, 1.0)
-            }
-        }
-
-        Text {
-            id: orientationReadingText
-            anchors.top: parent.top
-            anchors.left: parent.left
-            text: 'Orientation: ' + currentOrientation.toFixed(2)
-        }
-
-        Text {
-            id: tiltReadingText
-            anchors.top: orientationReadingText.bottom
-            anchors.left: parent.left
-            text: 'Tilt: ' + currentTilt.toFixed(2)
-        }
-
-        Text {
-            id: gpsPositionText
-            anchors.top: tiltReadingText.bottom
-            anchors.left: parent.left
-            text: 'GPS Position: ' + currentPosition[0] + ', ' + currentPosition[1]
-        }
+      text: ''
+      font: Theme.defaultFont
+      color: "red"// "white"
     }
+
+    Text {
+      id: gpsPositionText
+      anchors.top: tiltReadingText.bottom
+      anchors.left: parent.left
+      text: 'GPS Position: ' + currentPosition[0] + ', ' + currentPosition[1]
+      font: Theme.defaultFont
+      color: "green"
+    }
+
+    Text {
+      id: gpsAccuracyText
+      anchors.top: gpsPositionText.bottom
+      anchors.left: parent.left
+      text: 'Accuracy: ' + positionSource.sourceError  
+      font: Theme.defaultFont
+      color: "white"
+    }
+
+    Text {
+      id: pipeSegmentsText
+      anchors.top: gpsAccuracyText.bottom
+      anchors.left: parent.left
+      text: {
+        if (!testPipesLayer) return 'No pipe layer found';
+        let count = 0;
+        let iterator = testPipesLayer.getFeatures();
+        let feature;
+        while ((feature = iterator.nextFeature())) {
+          count += 1;  // Count each feature as one pipe
+        }
+        return 'Number of pipes: ' + count;
+      }
+      font: Theme.defaultFont
+      color: "white"
+    }
+
+    TiltSensor {
+      id: tiltSensor
+      active: threeDNavigationPopup.visible
+      property var tilts: []
+      property var stableThreshold: 0.5 // Define a threshold for stability
+      onReadingChanged: {
+        let tilt = reading.xRotation
+        tilts.push(tilt)
+        if (tilts.length > 5) {
+          tilts.shift()
+        }
+        
+        // Calculate average tilt
+        let averageTilt = tilts.reduce((a, b) => a + b, 0) / tilts.length
+        
+        // Check if the device is stable
+        let isStable = Math.max(...tilts) - Math.min(...tilts) < stableThreshold
+        
+        if (isStable) {
+          // Adjust the 3D view based on the average tilt
+          camera.rotation = Quaternion.fromAxesAndAngles(Qt.vector3d(1,0,0), averageTilt, Qt.vector3d(0,1,0), 0, Qt.vector3d(0,0,1), -plugin.currentOrientation)
+        }
+        
+        plugin.currentTilt = averageTilt
+        tiltReadingText.text = 'current orientation: ' + plugin.currentOrientation + '\ncurrent tilt: ' + plugin.currentTilt
+      }
+    }
+
+    Compass {
+      id: compass
+      active: threeDNavigationPopup.visible
+      property var azimuths: []
+      onReadingChanged: {
+        let azimuth = reading.azimuth
+
+        // Account for device pointing in the opposite direction to that of the camera
+        if (tiltSensor.reading.xRotation > 90) {
+          azimuth += 180
+        }
+        if (azimuth > 180) {
+          azimuth -= 360;
+        }
+
+        azimuths.push(azimuth)
+        if (azimuths.length > 5) {
+          azimuths.shift()
+        }
+        let sum = 0
+        let last = 0
+        for (let i = 0; i < azimuths.length; i++) {
+          if (i > 0 && Math.abs(last - azimuths[i]) > 100) {
+            let alt = last < 0 ? -180 - (180 - azimuths[i]) : (180 + (180 + azimuths[i]))
+            sum += (last < 0 ? -180 - (180 - azimuths[i]) : 180 + (180 + azimuths[i]))
+            last = alt
+          } else {
+            sum += azimuths[i]
+            last = azimuths[i]
+          }
+        }
+        azimuth = sum / azimuths.length
+        if (azimuth < 0) {
+          azimuth += 360
+        }
+        plugin.currentOrientation = azimuth
+        tiltReadingText.text = 'current orientation: ' + plugin.currentOrientation + '\ncurrent tilt: ' + plugin.currentTilt
+      }
+    }
+  }
 }
