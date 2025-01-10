@@ -8,6 +8,7 @@ import QtSensors
 import org.qfield
 import org.qgis
 import Theme
+import org.qgis.utils
 
 Item {
   id: plugin
@@ -26,17 +27,12 @@ Item {
 
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
-    // Attempt to access the layer by name
-    let layers = iface.mainWindow().mapCanvas().layers();
-    for (let i = 0; i < layers.length; i++) {
-      if (layers[i].name() === "test_pipes") {
-        testPipesLayer = layers[i];
-        console.log("testPipesLayer loaded successfully:", testPipesLayer.name());
-        break;
-      }
-    }
-    if (!testPipesLayer) {
-      console.log("Error: testPipesLayer not found.");
+    // Attempt to access the layer by name using LayerUtils
+    testPipesLayer = LayerUtils.layerById(QgsProject.instance, "test_pipes")
+    if (testPipesLayer) {
+      console.log("testPipesLayer loaded successfully:", testPipesLayer.name)
+    } else {
+      console.log("Error: testPipesLayer not found.")
     }
   }
 
