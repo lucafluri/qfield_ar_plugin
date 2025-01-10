@@ -34,6 +34,7 @@ Item {
     for (let layerId in layers) {
         let layer = layers[layerId]
         console.log("Found layer:", layer.name)  // Debug log
+        pipe_text = "Found layer: " + layer.name
         if (layer.name.toLowerCase().includes("test_pipes")) {
             testPipesLayer = layer
             console.log("testPipesLayer loaded successfully from mapLayers:", layer.name)
@@ -49,6 +50,7 @@ Item {
         for (let node of layerNodes) {
             let layer = node.layer
             console.log("Found layer in tree:", layer.name)  // Debug log
+            pipe_text = "Found layer in tree: " + layer.name
             if (layer.name.toLowerCase().includes("test_pipes")) {
                 testPipesLayer = layer
                 console.log("testPipesLayer loaded successfully from layer tree:", layer.name)
