@@ -281,26 +281,14 @@ Item {
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
       text: {
-        let layers = QgsProject.instance().mapLayersByName("test_pipes");
-        if (layers.length > 0) {
-            testPipesLayer = layers[0]; // Get the first layer with this name
-            return 'testPipesLayer loaded successfully:', testPipesLayer.name();
-        } else {
-            return 'Error: testPipesLayer not found.';
-        }
-
-        // if (!testPipesLayer) return 'No pipe layer found';
+        if (!testPipesLayer) return 'No pipe layer found';
         let count = 0;
         let iterator = testPipesLayer.getFeatures();
         let feature;
         while ((feature = iterator.nextFeature())) {
-          let geometry = feature.geometry;
-          if (geometry.type() === QgsWkbTypes.LineString) {
-            let points = geometry.asPolyline();
-            count += points.length - 1; // Each line has n-1 segments where n is number of points
-          }
+          count += 1;  // Count each feature as one pipe
         }
-        return 'Pipe segments: ' + count;
+        return 'Number of pipes: ' + count;
       }
       font: Theme.defaultFont
       color: "white"
