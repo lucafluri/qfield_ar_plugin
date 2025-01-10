@@ -15,6 +15,7 @@ Item {
   property var mainWindow: iface.mainWindow()
   property var positionSource: iface.findItemByObjectName('positionSource')
   property var testPipesLayer
+  property string pipe_text: ""
 
   property bool initiated: false
   property var points: []
@@ -36,6 +37,7 @@ Item {
         if (layer.name.toLowerCase().includes("test_pipes")) {
             testPipesLayer = layer
             console.log("testPipesLayer loaded successfully from mapLayers:", layer.name)
+            pipe_text = "testPipesLayer loaded successfully from mapLayers: " + layer.name
             break
         }
     }
@@ -50,6 +52,7 @@ Item {
             if (layer.name.toLowerCase().includes("test_pipes")) {
                 testPipesLayer = layer
                 console.log("testPipesLayer loaded successfully from layer tree:", layer.name)
+                pipe_text = "testPipesLayer loaded successfully from layer tree: " + layer.name
                 break
             }
         }
@@ -57,6 +60,7 @@ Item {
     
     if (!testPipesLayer) {
         console.log("Error: testPipesLayer not found in either mapLayers or layer tree")
+        pipe_text = "Error: testPipesLayer not found in either mapLayers or layer tree"
     }
   }
 
@@ -304,16 +308,17 @@ Item {
       id: pipeSegmentsText
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
-      text: {
-        if (!testPipesLayer) return 'No pipe layer found';
-        let count = 0;
-        let iterator = testPipesLayer.getFeatures();
-        let feature;
-        while ((feature = iterator.nextFeature())) {
-          count += 1;  // Count each feature as one pipe
-        }
-        return 'Number of pipes: ' + count;
-      }
+      text: pipe_text
+      // {
+      //   if (!testPipesLayer) return 'No pipe layer found';
+      //   let count = 0;
+      //   let iterator = testPipesLayer.getFeatures();
+      //   let feature;
+      //   while ((feature = iterator.nextFeature())) {
+      //     count += 1;  // Count each feature as one pipe
+      //   }
+      //   return 'Number of pipes: ' + count;
+      // }
       font: Theme.defaultFont
       color: "white"
     }
