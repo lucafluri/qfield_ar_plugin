@@ -32,19 +32,19 @@ Item {
       if (project) {
         var layer = project.mapLayer(layerName)
         if (layer) {
-          iface.messageLog("Layer " + layerName + " found!")
+          iface.mainWindow().displayToast("Layer " + layerName + " found!")
           currentLayerName = layerName
           return layer
         } else {
-          iface.messageLog("Layer " + layerName + " not found.")
+          iface.mainWindow().displayToast("Layer " + layerName + " not found")
           return null
         }
       } else {
-        iface.messageLog("Project not available")
+        iface.mainWindow().displayToast("Project not available")
         return null
       }
     } catch (error) {
-      iface.messageLog("Error accessing layer: " + error)
+      iface.mainWindow().displayToast("Error accessing layer: " + error)
       return null
     }
   }
@@ -52,11 +52,12 @@ Item {
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
     
-    iface.messageLog("Attempting to load pipe layer...")
+    iface.mainWindow().displayToast("Attempting to load pipe layer...")
     // Try to access the pipe layer directly using accessLayer
     testPipesLayer = accessLayer("test_pipes")
     if (testPipesLayer) {
       pipe_text = "Pipe layer loaded successfully: " + testPipesLayer.name
+      iface.mainWindow().displayToast(pipe_text)
     } else {
       // If exact name didn't work, try searching through available layers
       let project = iface.project
@@ -68,6 +69,7 @@ Item {
             testPipesLayer = accessLayer(layer.name)
             if (testPipesLayer) {
               pipe_text = "Pipe layer found and loaded: " + layer.name
+              iface.mainWindow().displayToast(pipe_text)
               break
             }
           }
@@ -76,7 +78,7 @@ Item {
       
       if (!testPipesLayer) {
         pipe_text = "Error: Pipe layer not found"
-        iface.messageLog("No pipe layer found in the project")
+        iface.mainWindow().displayToast("No pipe layer found in the project")
       }
     }
   }
@@ -325,7 +327,7 @@ Item {
       id: pipeSegmentsText
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
-      text: pipe_text
+      text: 'Pipe segments: ' + pipe_text
       font: Theme.defaultFont
       color: "white"
     }
