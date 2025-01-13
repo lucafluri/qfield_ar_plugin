@@ -4,7 +4,7 @@ import QtQuick3D
 import QtMultimedia
 import QtSensors
 
-import org.qfield
+import org.qfield 
 import org.qgis
 import Theme
 
@@ -187,7 +187,7 @@ Item {
       height: 100
       anchors.fill: parent
       fillMode: VideoOutput.PreserveAspectCrop
-    }
+    } 
 
     View3D {
       anchors.fill: parent
