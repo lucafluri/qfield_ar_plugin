@@ -1,10 +1,8 @@
 import QtQuick
 import QtQuick.Controls
-
 import QtQuick3D
 import QtMultimedia
 import QtSensors
-import QField 1.0
 
 import org.qfield
 import org.qgis
@@ -29,21 +27,24 @@ Item {
 
   // Function to access the layer
   function accessLayer(layerName) {
-    var project = QField.project
-    if (project) {
-      var layers = project.mapLayersByName(layerName)
-      if (layers.length > 0) {
-        var layer = layers[0]
-        console.log("Layer " + layerName + " found!")
-        console.log("Layer ID: " + layer.id)
-        currentLayerName = layerName
-        return layer
+    try {
+      var project = iface.project
+      if (project) {
+        var layer = project.mapLayer(layerName)
+        if (layer) {
+          iface.showMessage("Layer " + layerName + " found!", 'Info')
+          currentLayerName = layerName
+          return layer
+        } else {
+          iface.showMessage("Layer " + layerName + " not found.", 'Warning')
+          return null
+        }
       } else {
-        console.log("Layer " + layerName + " not found.")
+        iface.showMessage("Project not available", 'Critical')
         return null
       }
-    } else {
-      console.log("Project not available")
+    } catch (error) {
+      iface.showMessage("Error accessing layer: " + error, 'Critical')
       return null
     }
   }
@@ -56,11 +57,9 @@ Item {
     let layers = iface.project.mapLayers()
     for (let layerId in layers) {
         let layer = layers[layerId]
-        console.log("Found layer:", layer.name)  // Debug log
         pipe_text = "Found layer: " + layer.name
         if (layer.name.toLowerCase().includes("test_pipes")) {
             testPipesLayer = layer
-            console.log("testPipesLayer loaded successfully from mapLayers:", layer.name)
             pipe_text = "testPipesLayer loaded successfully from mapLayers: " + layer.name
             break
         }
@@ -72,11 +71,9 @@ Item {
         let layerNodes = root.findLayers()
         for (let node of layerNodes) {
             let layer = node.layer
-            console.log("Found layer in tree:", layer.name)  // Debug log
             pipe_text = "Found layer in tree: " + layer.name
             if (layer.name.toLowerCase().includes("test_pipes")) {
                 testPipesLayer = layer
-                console.log("testPipesLayer loaded successfully from layer tree:", layer.name)
                 pipe_text = "testPipesLayer loaded successfully from layer tree: " + layer.name
                 break
             }
@@ -84,7 +81,7 @@ Item {
     }
     
     if (!testPipesLayer) {
-        console.log("Error: testPipesLayer not found in either mapLayers or layer tree")
+        iface.showMessage("Error: testPipesLayer not found in either mapLayers or layer tree", 'Critical')
         pipe_text = "Error: testPipesLayer not found in either mapLayers or layer tree"
     }
   }
@@ -334,16 +331,6 @@ Item {
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
       text: pipe_text
-      // {
-      //   if (!testPipesLayer) return 'No pipe layer found';
-      //   let count = 0;
-      //   let iterator = testPipesLayer.getFeatures();
-      //   let feature;
-      //   while ((feature = iterator.nextFeature())) {
-      //     count += 1;  // Count each feature as one pipe
-      //   }
-      //   return 'Number of pipes: ' + count;
-      // }
       font: Theme.defaultFont
       color: "white"
     }
