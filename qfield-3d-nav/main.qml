@@ -14,7 +14,7 @@ Item {
   property var mainWindow: iface.mainWindow()
   property var positionSource: iface.findItemByObjectName('positionSource')
   property var testPipesLayer
-  property string pipe_text: ""
+  property string pipe_text: "Initializing pipe layer..." 
   property string currentLayerName: ""
 
   property bool initiated: false
@@ -56,6 +56,7 @@ Item {
     testPipesLayer = accessLayer("test_pipes")
     if (testPipesLayer) {
       pipe_text = "Pipe layer loaded successfully: " + testPipesLayer.name
+      iface.showMessage("Pipe text set to: " + pipe_text, 'Info')
     } else {
       // If exact name didn't work, try searching through available layers
       let project = iface.project
@@ -67,6 +68,7 @@ Item {
             testPipesLayer = accessLayer(layer.name)
             if (testPipesLayer) {
               pipe_text = "Pipe layer found and loaded: " + layer.name
+              iface.showMessage("Pipe text set to: " + pipe_text, 'Info')
               break
             }
           }
@@ -75,6 +77,7 @@ Item {
       
       if (!testPipesLayer) {
         pipe_text = "Error: Pipe layer not found"
+        iface.showMessage("Pipe text set to: " + pipe_text, 'Warning')
       }
     }
   }
@@ -135,9 +138,14 @@ Item {
 
     parent: mainWindow.contentItem
     width: Math.min(mainWindow.width, mainWindow.height) - 40
-    height: width
-    x: (mainWindow.width - width) / 2
-    y: (mainWindow.height - height) / 2
+    height: Math.min(mainWindow.width, mainWindow.height) - 40
+    modal: true
+    focus: true
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+    onOpened: {
+      iface.showMessage("Popup opened. Pipe text: " + pipe_text, 'Info')
+    }
 
     onAboutToHide: {
       plugin.initiated = false
@@ -323,9 +331,12 @@ Item {
       id: pipeSegmentsText
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
+      anchors.margins: 10
       text: pipe_text
       font: Theme.defaultFont
       color: "white"
+      visible: true
+      z: 100  // Ensure it's on top of other elements
     }
 
     TiltSensor {
