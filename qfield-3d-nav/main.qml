@@ -32,19 +32,19 @@ Item {
       if (project) {
         var layer = project.mapLayer(layerName)
         if (layer) {
-          iface.messageBar().pushInfo("Layer Access", "Layer " + layerName + " found!")
+          iface.messageLog("Layer " + layerName + " found!")
           currentLayerName = layerName
           return layer
         } else {
-          iface.messageBar().pushWarning("Layer Access", "Layer " + layerName + " not found.")
+          iface.messageLog("Layer " + layerName + " not found.")
           return null
         }
       } else {
-        iface.messageBar().pushCritical("Layer Access", "Project not available")
+        iface.messageLog("Project not available")
         return null
       }
     } catch (error) {
-      iface.messageBar().pushCritical("Layer Access", "Error accessing layer: " + error)
+      iface.messageLog("Error accessing layer: " + error)
       return null
     }
   }
@@ -52,6 +52,7 @@ Item {
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
     
+    iface.messageLog("Attempting to load pipe layer...")
     // Try to access the pipe layer directly using accessLayer
     testPipesLayer = accessLayer("test_pipes")
     if (testPipesLayer) {
@@ -75,6 +76,7 @@ Item {
       
       if (!testPipesLayer) {
         pipe_text = "Error: Pipe layer not found"
+        iface.messageLog("No pipe layer found in the project")
       }
     }
   }
