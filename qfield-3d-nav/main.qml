@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick3D
 import QtMultimedia
 import QtSensors
+import QField 1.0
 
 import org.qfield
 import org.qgis
@@ -16,6 +17,7 @@ Item {
   property var positionSource: iface.findItemByObjectName('positionSource')
   property var testPipesLayer
   property string pipe_text: ""
+  property string currentLayerName: ""
 
   property bool initiated: false
   property var points: []
@@ -24,6 +26,27 @@ Item {
   property var currentPosition: [0,0,0]
   property double currentOrientation: 0
   property double currentTilt: 90
+
+  // Function to access the layer
+  function accessLayer(layerName) {
+    var project = QField.project
+    if (project) {
+      var layers = project.mapLayersByName(layerName)
+      if (layers.length > 0) {
+        var layer = layers[0]
+        console.log("Layer " + layerName + " found!")
+        console.log("Layer ID: " + layer.id)
+        currentLayerName = layerName
+        return layer
+      } else {
+        console.log("Layer " + layerName + " not found.")
+        return null
+      }
+    } else {
+      console.log("Project not available")
+      return null
+    }
+  }
 
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
