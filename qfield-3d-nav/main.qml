@@ -52,37 +52,30 @@ Item {
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
     
-    // Try both approaches to find the layer
-    // First try: Using project's mapLayers
-    let layers = iface.project.mapLayers()
-    for (let layerId in layers) {
-        let layer = layers[layerId]
-        pipe_text = "Found layer: " + layer.name
-        if (layer.name.toLowerCase().includes("test_pipes")) {
-            testPipesLayer = layer
-            pipe_text = "testPipesLayer loaded successfully from mapLayers: " + layer.name
-            break
-        }
-    }
-    
-    // Second try: Using layer tree if first approach failed
-    if (!testPipesLayer) {
-        let root = iface.project.layerTreeRoot()
-        let layerNodes = root.findLayers()
-        for (let node of layerNodes) {
-            let layer = node.layer
-            pipe_text = "Found layer in tree: " + layer.name
-            if (layer.name.toLowerCase().includes("test_pipes")) {
-                testPipesLayer = layer
-                pipe_text = "testPipesLayer loaded successfully from layer tree: " + layer.name
-                break
+    // Try to access the pipe layer directly using accessLayer
+    testPipesLayer = accessLayer("test_pipes")
+    if (testPipesLayer) {
+      pipe_text = "Pipe layer loaded successfully: " + testPipesLayer.name
+    } else {
+      // If exact name didn't work, try searching through available layers
+      let project = iface.project
+      if (project) {
+        let layers = project.mapLayers()
+        for (let layerId in layers) {
+          let layer = layers[layerId]
+          if (layer.name.toLowerCase().includes("test_pipes")) {
+            testPipesLayer = accessLayer(layer.name)
+            if (testPipesLayer) {
+              pipe_text = "Pipe layer found and loaded: " + layer.name
+              break
             }
+          }
         }
-    }
-    
-    if (!testPipesLayer) {
-        iface.showMessage("Error: testPipesLayer not found in either mapLayers or layer tree", 'Critical')
-        pipe_text = "Error: testPipesLayer not found in either mapLayers or layer tree"
+      }
+      
+      if (!testPipesLayer) {
+        pipe_text = "Error: Pipe layer not found"
+      }
     }
   }
 
