@@ -52,34 +52,47 @@ Item {
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
     
-    iface.mainWindow().displayToast("Attempting to load pipe layer...")
-    // Try to access the pipe layer directly using accessLayer
-    testPipesLayer = accessLayer("test_pipes")
-    if (testPipesLayer) {
-      pipe_text = "Pipe layer loaded successfully: " + testPipesLayer.name
-      iface.mainWindow().displayToast(pipe_text)
-    } else {
-      // If exact name didn't work, try searching through available layers
-      let project = iface.project
-      if (project) {
-        let layers = project.mapLayers()
-        for (let layerId in layers) {
-          let layer = layers[layerId]
-          if (layer.name.toLowerCase().includes("test_pipes")) {
-            testPipesLayer = accessLayer(layer.name)
-            if (testPipesLayer) {
-              pipe_text = "Pipe layer found and loaded: " + layer.name
-              iface.mainWindow().displayToast(pipe_text)
-              break
-            }
-          }
-        }
-      }
+    // Wait for project to be loaded
+    if (!iface.project) {
+      iface.mainWindow().displayToast("Waiting for project to load...")
+      return
+    }
+
+    loadPipeLayer()
+  }
+
+  // Function to load the pipe layer
+  function loadPipeLayer() {
+    iface.mainWindow().displayToast("Loading pipe layer...")
+    
+    // Get all layers from the project
+    let project = iface.project
+    let layers = project.mapLayers()
+    
+    // Debug: List all available layers
+    for (let layerId in layers) {
+      let layer = layers[layerId]
+      iface.mainWindow().displayToast("Found layer: " + layer.name)
       
-      if (!testPipesLayer) {
-        pipe_text = "Error: Pipe layer not found"
-        iface.mainWindow().displayToast("No pipe layer found in the project")
+      if (layer.name.toLowerCase().includes("test_pipes")) {
+        testPipesLayer = layer
+        pipe_text = "Pipe layer loaded: " + layer.name
+        iface.mainWindow().displayToast(pipe_text)
+        return
       }
+    }
+    
+    pipe_text = "Error: test_pipes layer not found"
+    iface.mainWindow().displayToast("test_pipes layer not found in project")
+  }
+
+  // Connect to project loaded signal
+  Connections {
+    target: iface
+    
+    function onProjectWasLoaded() {
+      iface.mainWindow().displayToast("Project loaded, attempting to load pipe layer...")
+      loadPipeLayer()
     }
   }
 
