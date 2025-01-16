@@ -12,13 +12,12 @@ Item {
   id: plugin
 
   //----------------------------------
-  // Properties & references
+  // Properties
   //----------------------------------
   property var mainWindow: iface.mainWindow()
   property var positionSource: iface.findItemByObjectName('positionSource')
   property var testPipesLayer
   property string pipe_text: ""
-  property string currentLayerName: ""
 
   property bool initiated: false
   property var points: []
@@ -29,110 +28,79 @@ Item {
   property double currentTilt: 90
 
   //----------------------------------
-  // Helper to show debug toasts
+  // Helper for toast + text fallback
   //----------------------------------
-  function debugToast(msg) {
-    // Show for 3 seconds (adjust to preference).
+  function logMsg(msg) {
+    // 1) Show toast inside QField
     iface.mainWindow().displayToast(msg, 3)
+
+    // 2) Also store in pipe_text so it appears in the UI
+    pipe_text += "\n" + msg
   }
 
   //----------------------------------
-  // Access layer by name
+  // Attempt to find the layer by exact name:
+  // "test_pipes.shp" in the active project
   //----------------------------------
-  function accessLayer(layerName) {
-    try {
-      var project = iface.project
-      if (project) {
-        var layer = project.mapLayer(layerName)
-        if (layer) {
-          debugToast("Layer " + layerName + " found!")
-          console.error("Layer " + layerName + " found!")
-          currentLayerName = layerName
-          return layer
-        } else {
-          debugToast("Layer " + layerName + " not found")
-          console.error("Layer " + layerName + " not found")
-          return null
-        }
-      } else {
-        debugToast("Project not available")
-        console.error("Project not available")
-        return null
-      }
-    } catch (error) {
-      debugToast("Error accessing layer: " + error)
-      console.error("Error accessing layer: " + error)
+  function findTestPipesExact() {
+    let project = iface.project
+    if (!project) {
+      logMsg("No project found!")
       return null
     }
+
+    let layersMap = project.mapLayers()
+    let exactName = "test_pipes.shp" // The name you said your dataset has
+    for (let layerId in layersMap) {
+      let l = layersMap[layerId]
+      // If the layer name is exactly test_pipes.shp
+      if (l.name === exactName) {
+        logMsg("Exact match found: " + l.name)
+        return l
+      }
+    }
+    // If exact match not found, fallback: partial match
+    for (let layerId in layersMap) {
+      let l = layersMap[layerId]
+      if (l.name && l.name.toLowerCase().includes("test_pipes")) {
+        logMsg("Found partial match: " + l.name)
+        return l
+      }
+    }
+    return null
   }
 
   //----------------------------------
-  // Startup logic
+  // On start: find the layer
   //----------------------------------
   Component.onCompleted: {
-    // Add the plugin button to the QField toolbar
     iface.addItemToPluginsToolbar(pluginButton)
 
-    // Debug: see what layers we have
-    let layers = iface.project.mapLayers()
-    for (let layerId in layers) {
-      let layer = layers[layerId]
-      // We'll do a toast for each found layer
-      console.log("Found layer: " + layer.name)
-    }
-
-    // 1) Attempt to find 'test_pipes' by name in mapLayers()
-    testPipesLayer = findTestPipesLayerByName()
-
-    // 2) Fallback: if not found, search in layer tree
-    if (!testPipesLayer) {
-      testPipesLayer = findTestPipesLayerInTree()
-    }
-
-    // If still not found, show error toast
-    if (!testPipesLayer) {
-      console.error("Error: test_pipes layer not found anywhere")
-      pipe_text = "Error: test_pipes layer not found."
+    // Show all layers in a toast (useful for debugging)
+    let project = iface.project
+    if (!project) {
+      logMsg("Project is null!?")
     } else {
-      console.error("testPipesLayer acquired: " + testPipesLayer.name)
-      pipe_text = "testPipesLayer found: " + testPipesLayer.name
-    }
-  }
-
-  //----------------------------------
-  // Utility to find 'test_pipes' in mapLayers()
-  //----------------------------------
-  function findTestPipesLayerByName() {
-    let layers = iface.project.mapLayers()
-    for (let layerId in layers) {
-      let layer = layers[layerId]
-      // Check for "test_pipes" substring
-      if (layer.name && layer.name.toLowerCase().includes("test_pipes")) {
-        console.error("test_pipes found by mapLayers() => " + layer.name)
-        return layer
+      let allLayers = project.mapLayers()
+      let layerCount = Object.keys(allLayers).length
+      logMsg("Project has " + layerCount + " layers:")
+      for (let lid in allLayers) {
+        logMsg(" - " + allLayers[lid].name)
       }
     }
-    return null
-  }
 
-  //----------------------------------
-  // Utility to find 'test_pipes' in layer tree
-  //----------------------------------
-  function findTestPipesLayerInTree() {
-    let root = iface.project.layerTreeRoot()
-    let layerNodes = root.findLayers()
-    for (let node of layerNodes) {
-      let layer = node.layer
-      if (layer && layer.name && layer.name.toLowerCase().includes("test_pipes")) {
-        console.error("test_pipes found by layerTreeRoot => " + layer.name)
-        return layer
-      }
+    // Try to find "test_pipes.shp"
+    testPipesLayer = findTestPipesExact()
+
+    if (!testPipesLayer) {
+      logMsg("ERROR: Could not find test_pipes.shp layer!")
+    } else {
+      logMsg("SUCCESS: We have testPipesLayer => " + testPipesLayer.name)
     }
-    return null
   }
 
   //----------------------------------
-  // Monitor position changes to update
+  // Keep track of position changes
   //----------------------------------
   Connections {
     target: positionSource
@@ -160,7 +128,6 @@ Item {
 
         if (!plugin.initiated) {
           plugin.initiated = true
-          // Just arbitrary points around the GPS position for testing
           plugin.points = [
             [x + 5, y,     0],
             [x,     y + 5, 0],
@@ -178,7 +145,7 @@ Item {
   }
 
   //----------------------------------
-  // Button on QField toolbar
+  // Toolbar button to open the popup
   //----------------------------------
   QfToolButton {
     id: pluginButton
@@ -193,7 +160,7 @@ Item {
   }
 
   //----------------------------------
-  // Main Popup with 3D View
+  // Main Popup with 3D
   //----------------------------------
   Popup {
     id: threeDNavigationPopup
@@ -204,14 +171,12 @@ Item {
     x: (mainWindow.width - width) / 2
     y: (mainWindow.height - height) / 2
 
-    // Reset some states when closing
     onAboutToHide: {
       plugin.initiated = false
       plugin.points = []
       plugin.positions = []
     }
 
-    // Initialize 3D points when opening
     onAboutToShow: {
       if (positionSource.active) {
         let x = positionSource.projectedPosition.x
@@ -232,7 +197,7 @@ Item {
       }
     }
 
-    // (Optional) Camera pass-through background
+    // Optional camera background
     CaptureSession {
       id: captureSession
       camera: Camera {
@@ -249,7 +214,7 @@ Item {
     }
 
     //----------------------------------
-    // 3D Scene
+    // 3D View
     //----------------------------------
     View3D {
       anchors.fill: parent
@@ -276,9 +241,9 @@ Item {
       }
 
       Node {
-        //----------------------------------------
-        // 1) Visualize reference spheres
-        //----------------------------------------
+        //----------------------------
+        // 1) Some spheres for testing
+        //----------------------------
         Repeater3D {
           model: plugin.points
 
@@ -301,14 +266,14 @@ Item {
           }
         }
 
-        //----------------------------------------
-        // 2) Visualize pipes as 3D cylinders
-        //----------------------------------------
+        //----------------------------
+        // 2) Repeater for pipe lines
+        //----------------------------
         Repeater3D {
           model: {
+            // If the layer isn't found or empty, skip
             if (!testPipesLayer) {
-              debugToast("No testPipesLayer => returning empty array")
-              console.log("No testPipesLayer => returning empty array")
+              logMsg("Warning: testPipesLayer is null => no lines to display")
               return []
             }
 
@@ -317,54 +282,59 @@ Item {
             let feature
             while ((feature = iterator.nextFeature())) {
               let geometry = feature.geometry
-              if (!geometry) continue
+              if (!geometry)
+                continue
 
-              // Check the WKB type to see if 2D/3D single or multi
+              // In QGIS, wkbType for 2D lines is often 2, for 2D multi-line is 5,
+              // but you may also see 1002 or 1015 for 3D lines.
               let wkbType = geometry.wkbType()
 
-              // Single 2D or 2.5D
-              let single2D = geometry.asPolyline()
-              let single3D = geometry.asPolyline3D()
-              if (single2D && single2D.length > 1) {
-                for (let i = 0; i < single2D.length - 1; i++) {
+              // Single 2D
+              let line2d = geometry.asPolyline()
+              if (line2d && line2d.length > 1) {
+                for (let i = 0; i < line2d.length - 1; i++) {
                   featureArray.push({
-                    start: {x: single2D[i].x,   y: single2D[i].y,   z: 0},
-                    end:   {x: single2D[i+1].x, y: single2D[i+1].y, z: 0}
-                  })
-                }
-              } else if (single3D && single3D.length > 1) {
-                for (let i = 0; i < single3D.length - 1; i++) {
-                  featureArray.push({
-                    start: single3D[i],
-                    end:   single3D[i+1]
+                    start: {x: line2d[i].x,   y: line2d[i].y,   z: 0},
+                    end:   {x: line2d[i+1].x, y: line2d[i+1].y, z: 0}
                   })
                 }
               }
 
-              // Multi-line
-              if (wkbType === 5 /* wkbMultiLineString */ ||
-                  wkbType === 1015 /* wkbMultiLineStringZ */) {
-                let multi2D = geometry.asMultiPolyline()
-                let multi3D = geometry.asMultiPolyline3D()
+              // Single 3D
+              let line3d = geometry.asPolyline3D()
+              if (line3d && line3d.length > 1) {
+                for (let i = 0; i < line3d.length - 1; i++) {
+                  featureArray.push({
+                    start: line3d[i],
+                    end:   line3d[i+1]
+                  })
+                }
+              }
 
-                // 2D multi
-                if (multi2D && multi2D.length > 0) {
-                  for (let line of multi2D) {
-                    for (let i = 0; i < line.length - 1; i++) {
+              // Multi-line 2D
+              if (wkbType === 5) {
+                let multi2d = geometry.asMultiPolyline()
+                if (multi2d) {
+                  for (let subLine of multi2d) {
+                    for (let i = 0; i < subLine.length - 1; i++) {
                       featureArray.push({
-                        start: {x: line[i].x,   y: line[i].y,   z: 0},
-                        end:   {x: line[i+1].x, y: line[i+1].y, z: 0}
+                        start: {x: subLine[i].x,   y: subLine[i].y,   z: 0},
+                        end:   {x: subLine[i+1].x, y: subLine[i+1].y, z: 0}
                       })
                     }
                   }
                 }
-                // 3D multi
-                else if (multi3D && multi3D.length > 0) {
-                  for (let line3D of multi3D) {
-                    for (let i = 0; i < line3D.length - 1; i++) {
+              }
+
+              // Multi-line 3D
+              if (wkbType === 1015) {
+                let multi3d = geometry.asMultiPolyline3D()
+                if (multi3d) {
+                  for (let subLine3D of multi3d) {
+                    for (let i = 0; i < subLine3D.length - 1; i++) {
                       featureArray.push({
-                        start: line3D[i],
-                        end:   line3D[i+1]
+                        start: subLine3D[i],
+                        end:   subLine3D[i+1]
                       })
                     }
                   }
@@ -372,10 +342,7 @@ Item {
               }
             }
 
-            // Show the total number of line segments
-            debugToast("Found " + featureArray.length + " segments in test_pipes")
-            console.log("Found " + featureArray.length + " segments in test_pipes")
-
+            logMsg("Found " + featureArray.length + " line segments in test_pipes.shp")
             return featureArray
           }
 
@@ -383,31 +350,28 @@ Item {
             required property var start
             required property var end
 
-            // Helper properties
+            // Calculate middle point
             property real dx: end.x - start.x
             property real dy: end.y - start.y
             property real segmentLength: Math.sqrt(dx*dx + dy*dy)
 
-            // Compute the midpoint
             position: {
               let midX = (start.x + end.x) / 2 - plugin.currentPosition[0]
               let midY = (start.y + end.y) / 2 - plugin.currentPosition[1]
-
-              // For debug, toast each segment. Careful if you have many lines.
-              debugToast("Mid => " + midX.toFixed(2) + "," +
-                         midY.toFixed(2) + " Len => " +
-                         segmentLength.toFixed(2))
-
+              // For debugging, show each segment’s center & length
+              logMsg("Pipe center => X:" + midX.toFixed(2) +
+                     " Y:" + midY.toFixed(2) +
+                     " Len:" + segmentLength.toFixed(2))
               return Qt.vector3d(midX, midY, 0)
             }
 
-            // Align the cylinder with the line
+            // Rotate cylinder to line up with the segment
             rotation: {
               let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
               return Qt.quaternion.fromEulerAngles(0, 0, angleDeg)
             }
 
-            // Scale: length in X, small diameter in Y/Z
+            // Scale: length in x-direction, small radius in y/z
             scale: Qt.vector3d(segmentLength, 0.002, 0.002)
 
             source: "#Cylinder"
@@ -421,23 +385,24 @@ Item {
     }
 
     //----------------------------------
-    // Close Button
+    // Close button
     //----------------------------------
     QfToolButton {
       anchors.top: parent.top
       anchors.right: parent.right
       anchors.margins: 5
-
       round: true
       iconSource: Theme.getThemeVectorIcon('ic_close_white_24dp')
       iconColor: "White"
       bgcolor: Theme.darkGray
 
-      onClicked: threeDNavigationPopup.close()
+      onClicked: {
+        threeDNavigationPopup.close()
+      }
     }
 
     //----------------------------------
-    // Tilt / Orientation Debug Text
+    // Text overlays
     //----------------------------------
     Text {
       id: tiltReadingText
@@ -448,7 +413,6 @@ Item {
       color: "red"
     }
 
-    // Show GPS position
     Text {
       id: gpsPositionText
       anchors.top: tiltReadingText.bottom
@@ -458,7 +422,6 @@ Item {
       color: "green"
     }
 
-    // Show GPS accuracy
     Text {
       id: gpsAccuracyText
       anchors.top: gpsPositionText.bottom
@@ -468,7 +431,6 @@ Item {
       color: "white"
     }
 
-    // Show pipe layer text
     Text {
       id: pipeSegmentsText
       anchors.top: gpsAccuracyText.bottom
@@ -479,7 +441,7 @@ Item {
     }
 
     //----------------------------------
-    // TiltSensor logic
+    // Tilt sensor to adjust camera pitch
     //----------------------------------
     TiltSensor {
       id: tiltSensor
@@ -516,7 +478,7 @@ Item {
     }
 
     //----------------------------------
-    // Compass logic
+    // Compass sensor for yaw orientation
     //----------------------------------
     Compass {
       id: compass
