@@ -74,7 +74,7 @@ Item {
     for (let layerId in layers) {
       let layer = layers[layerId]
       // We'll do a toast for each found layer
-      debugToast("Found layer: " + layer.name)
+      console.log("Found layer: " + layer.name)
     }
 
     // 1) Attempt to find 'test_pipes' by name in mapLayers()
@@ -87,10 +87,10 @@ Item {
 
     // If still not found, show error toast
     if (!testPipesLayer) {
-      debugToast("Error: test_pipes layer not found anywhere")
+      console.log("Error: test_pipes layer not found anywhere")
       pipe_text = "Error: test_pipes layer not found."
     } else {
-      debugToast("testPipesLayer acquired: " + testPipesLayer.name)
+      console.log("testPipesLayer acquired: " + testPipesLayer.name)
       pipe_text = "testPipesLayer found: " + testPipesLayer.name
     }
   }
@@ -104,7 +104,7 @@ Item {
       let layer = layers[layerId]
       // Check for "test_pipes" substring
       if (layer.name && layer.name.toLowerCase().includes("test_pipes")) {
-        debugToast("test_pipes found by mapLayers() => " + layer.name)
+        console.log("test_pipes found by mapLayers() => " + layer.name)
         return layer
       }
     }
@@ -120,7 +120,7 @@ Item {
     for (let node of layerNodes) {
       let layer = node.layer
       if (layer && layer.name && layer.name.toLowerCase().includes("test_pipes")) {
-        debugToast("test_pipes found by layerTreeRoot => " + layer.name)
+        console.log("test_pipes found by layerTreeRoot => " + layer.name)
         return layer
       }
     }
@@ -304,6 +304,7 @@ Item {
           model: {
             if (!testPipesLayer) {
               debugToast("No testPipesLayer => returning empty array")
+              console.log("No testPipesLayer => returning empty array")
               return []
             }
 
@@ -369,6 +370,7 @@ Item {
 
             // Show the total number of line segments
             debugToast("Found " + featureArray.length + " segments in test_pipes")
+            console.log("Found " + featureArray.length + " segments in test_pipes")
 
             return featureArray
           }
