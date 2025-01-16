@@ -1,11 +1,10 @@
 import QtQuick
 import QtQuick.Controls
-
 import QtQuick3D
 import QtMultimedia
 import QtSensors
 
-import org.qfield
+import org.qfield 
 import org.qgis
 import Theme
 
@@ -16,6 +15,7 @@ Item {
   property var positionSource: iface.findItemByObjectName('positionSource')
   property var testPipesLayer
   property string pipe_text: ""
+  property string currentLayerName: ""
 
   property bool initiated: false
   property var points: []
@@ -24,6 +24,30 @@ Item {
   property var currentPosition: [0,0,0]
   property double currentOrientation: 0
   property double currentTilt: 90
+
+  // Function to access the layer
+  function accessLayer(layerName) {
+    try {
+      var project = iface.project
+      if (project) {
+        var layer = project.mapLayer(layerName)
+        if (layer) {
+          iface.mainWindow().displayToast("Layer " + layerName + " found!")
+          currentLayerName = layerName
+          return layer
+        } else {
+          iface.mainWindow().displayToast("Layer " + layerName + " not found")
+          return null
+        }
+      } else {
+        iface.mainWindow().displayToast("Project not available")
+        return null
+      }
+    } catch (error) {
+      iface.mainWindow().displayToast("Error accessing layer: " + error)
+      return null
+    }
+  }
 
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
@@ -180,7 +204,7 @@ Item {
       height: 100
       anchors.fill: parent
       fillMode: VideoOutput.PreserveAspectCrop
-    }
+    } 
 
     View3D {
       anchors.fill: parent
