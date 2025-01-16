@@ -46,18 +46,22 @@ Item {
         var layer = project.mapLayer(layerName)
         if (layer) {
           debugToast("Layer " + layerName + " found!")
+          console.error("Layer " + layerName + " found!")
           currentLayerName = layerName
           return layer
         } else {
           debugToast("Layer " + layerName + " not found")
+          console.error("Layer " + layerName + " not found")
           return null
         }
       } else {
         debugToast("Project not available")
+        console.error("Project not available")
         return null
       }
     } catch (error) {
       debugToast("Error accessing layer: " + error)
+      console.error("Error accessing layer: " + error)
       return null
     }
   }
@@ -87,10 +91,10 @@ Item {
 
     // If still not found, show error toast
     if (!testPipesLayer) {
-      console.log("Error: test_pipes layer not found anywhere")
+      console.error("Error: test_pipes layer not found anywhere")
       pipe_text = "Error: test_pipes layer not found."
     } else {
-      console.log("testPipesLayer acquired: " + testPipesLayer.name)
+      console.error("testPipesLayer acquired: " + testPipesLayer.name)
       pipe_text = "testPipesLayer found: " + testPipesLayer.name
     }
   }
@@ -104,7 +108,7 @@ Item {
       let layer = layers[layerId]
       // Check for "test_pipes" substring
       if (layer.name && layer.name.toLowerCase().includes("test_pipes")) {
-        console.log("test_pipes found by mapLayers() => " + layer.name)
+        console.error("test_pipes found by mapLayers() => " + layer.name)
         return layer
       }
     }
@@ -120,7 +124,7 @@ Item {
     for (let node of layerNodes) {
       let layer = node.layer
       if (layer && layer.name && layer.name.toLowerCase().includes("test_pipes")) {
-        console.log("test_pipes found by layerTreeRoot => " + layer.name)
+        console.error("test_pipes found by layerTreeRoot => " + layer.name)
         return layer
       }
     }
