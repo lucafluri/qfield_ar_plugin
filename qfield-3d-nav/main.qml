@@ -50,6 +50,12 @@ Item {
     }
 
     let layersMap = project.mapLayers()
+    logMsg("Available layers:")
+    for (let layerId in layersMap) {
+      let l = layersMap[layerId]
+      logMsg(" - " + l.name)
+    }
+
     let exactName = "test_pipes.shp" // The name you said your dataset has
     for (let layerId in layersMap) {
       let l = layersMap[layerId]
