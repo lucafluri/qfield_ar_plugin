@@ -40,7 +40,7 @@ Item {
 
   //----------------------------------
   // Attempt to find the layer by exact name:
-  // "test_pipes.shp" in the active project
+  // "test_pipes" in the active project
   //----------------------------------
   function findTestPipesExact() {
     let project = iface.project
