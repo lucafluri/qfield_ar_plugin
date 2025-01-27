@@ -131,8 +131,22 @@ Item {
     Qt.callLater(initLayer)
   }
 
+  Connections {
+    target: iface.project
+    
+    // QGIS emits this signal when layers are added/removed
+    function onLayersAdded() { 
+        testPipesLayer = findTestPipesExact()
+    }
+    
+    // QGIS emits this when a new project is opened
+    function onProjectRead() { 
+        testPipesLayer = findTestPipesExact()
+    }
+}
+
   //----------------------------------
-  // Keep track of position chandssssges
+  // Keep track of position changes
   //----------------------------------
   Connections {
     target: positionSource
