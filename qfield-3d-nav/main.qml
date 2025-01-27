@@ -95,11 +95,6 @@ Item {
     return null
   }
 
-  Component.onCompleted: {
-    iface.addItemToPluginsToolbar(pluginButton)
-    timer.running = true // Start retry timer
-}
-
 Timer {
     id: timer
     interval: 1000
@@ -148,9 +143,9 @@ function initLayer() {
   //----------------------------------
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
-
+    timer.running = true // Start retry timer
     
-    Qt.callLater(initLayer)
+    //Qt.callLater(initLayer)
   }
 
   Connections {
