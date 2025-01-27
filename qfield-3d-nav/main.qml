@@ -96,29 +96,39 @@ Item {
   }
 
   function initLayer() {
-        // Show all layers in a toast (useful for debugging)
-        let project = iface.project
-        if (!project) {
-            logMsg("Project is null!?")
-            return
-        }
-
-        let allLayers = mapCanvas.mapSettings.layers
-        let layerCount = Object.keys(allLayers).length
-        logMsg("Project has " + layerCount + " layers:")
-        for (let lid in allLayers) {
-            logMsg(" - " + allLayers[lid].name)
-        }
-
-        // Try to find "test_pipes"
-        testPipesLayer = findTestPipesExact()
-
-        if (!testPipesLayer) {
-            logMsg("ERROR: Could not find test_pipes layer!")
-        } else {
-            logMsg("SUCCESS: We have testPipesLayer => " + testPipesLayer.name)
-        }
+    // Check critical objects
+    if (!iface || !mapCanvas) {
+        logMsg("ERROR: Critical objects (iface/mapCanvas) are null!")
+        return
     }
+
+    // Check project
+    let project = iface.project
+    if (!project) {
+        logMsg("Project not loaded yet! Retrying in 1 second...")
+        Qt.callLater(initLayer) // Retry after event loop cycle
+        return
+    }
+
+    // Debug: List all layers
+    let allLayers = mapCanvas.mapSettings.layers
+    let layerCount = Object.keys(allLayers).length
+    logMsg("Project has " + layerCount + " layers:")
+    for (let lid in allLayers) {
+        logMsg(" - " + allLayers[lid].name)
+    }
+
+    // Try to find "test_pipes"
+    testPipesLayer = findTestPipesExact()
+
+    if (!testPipesLayer) {
+        logMsg("ERROR: Could not find test_pipes layer!")
+    } else {
+        logMsg("SUCCESS: Found test_pipes layer: " + testPipesLayer.name)
+        logMsg("Layer CRS: " + testPipesLayer.crs.authid())
+        logMsg("Is valid? " + testPipesLayer.isValid())
+    }
+}
 
 
   //----------------------------------
