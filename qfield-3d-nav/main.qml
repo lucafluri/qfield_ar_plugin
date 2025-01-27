@@ -56,7 +56,7 @@ Item {
       logMsg(" - " + l.name)
     }
 
-    let exactName = "test_pipes.shp" // The name you said your dataset has
+    let exactName = "test_pipes" // The name you said your dataset has
     for (let layerId in layersMap) {
       let l = layersMap[layerId]
       // If the layer name is exactly test_pipes.shp
