@@ -95,45 +95,51 @@ Item {
     return null
   }
 
-  function initLayer() {
-    // Critical object checks
-    if (!iface) {
-        logMsg("ERROR: iface is null!")
-        Qt.callLater(initLayer)
+  Component.onCompleted: {
+    iface.addItemToPluginsToolbar(pluginButton)
+    timer.running = true // Start retry timer
+}
+
+Timer {
+    id: timer
+    interval: 1000
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: initLayer()
+}
+
+Connections {
+    target: iface.project
+    function onProjectRead() {
+        logMsg("Project fully loaded!")
+        timer.stop()
+        initLayer()
+    }
+}
+
+property int initRetryCount: 0
+property int maxRetries: 10
+
+function initLayer() {
+    if (initRetryCount >= maxRetries) {
+        logMsg("Project load timeout")
+        timer.stop()
         return
     }
-    if (!iface.mapCanvas) {
-        logMsg("ERROR: mapCanvas is null!")
-        Qt.callLater(initLayer)
+    initRetryCount++
+
+    if (!iface || !iface.project || !iface.mapCanvas) {
+        logMsg("Waiting for project... (" + initRetryCount + "/" + maxRetries + ")")
         return
     }
 
-    // Project check
-    let project = iface.project
-    if (!project) {
-        logMsg("Project not loaded! Retrying...")
-        Qt.callLater(initLayer)
-        return
-    }
+    logMsg("Project loaded successfully!")
+    timer.stop()
 
-    // List all layers
-    let layersMap = project.mapLayers()
-    logMsg("=== Layers in Project ===")
-    logMsg("Total: " + Object.keys(layersMap).length)
-    for (let layerId in layersMap) {
-        let layer = layersMap[layerId]
-        logMsg(` - ${layer.name} (ID: ${layerId}, Type: ${layer.geometryType})`)
-    }
-
-    // Find test_pipes layer
+    // Proceed with layer initialization
+    let layersMap = iface.project.mapLayers()
+    logMsg("Layers: " + Object.keys(layersMap).length)
     testPipesLayer = findTestPipesExact()
-    if (!testPipesLayer) {
-        logMsg("ERROR: test_pipes layer not found!")
-    } else {
-        logMsg("SUCCESS: Found layer: " + testPipesLayer.name)
-        logMsg("Geometry Type: " + testPipesLayer.geometryType)
-        logMsg("CRS: " + testPipesLayer.crs.authid())
-    }
 }
 
 
