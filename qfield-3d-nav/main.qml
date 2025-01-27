@@ -96,37 +96,43 @@ Item {
   }
 
   function initLayer() {
-    // Check critical objects
-    if (!iface || !mapCanvas) {
-        logMsg("ERROR: Critical objects (iface/mapCanvas) are null!")
+    // Critical object checks
+    if (!iface) {
+        logMsg("ERROR: iface is null!")
+        Qt.callLater(initLayer)
+        return
+    }
+    if (!iface.mapCanvas) {
+        logMsg("ERROR: mapCanvas is null!")
+        Qt.callLater(initLayer)
         return
     }
 
-    // Check project
+    // Project check
     let project = iface.project
     if (!project) {
-        logMsg("Project not loaded yet! Retrying in 1 second...")
-        Qt.callLater(initLayer) // Retry after event loop cycle
+        logMsg("Project not loaded! Retrying...")
+        Qt.callLater(initLayer)
         return
     }
 
-    // Debug: List all layers
-    let allLayers = mapCanvas.mapSettings.layers
-    let layerCount = Object.keys(allLayers).length
-    logMsg("Project has " + layerCount + " layers:")
-    for (let lid in allLayers) {
-        logMsg(" - " + allLayers[lid].name)
+    // List all layers
+    let layersMap = project.mapLayers()
+    logMsg("=== Layers in Project ===")
+    logMsg("Total: " + Object.keys(layersMap).length)
+    for (let layerId in layersMap) {
+        let layer = layersMap[layerId]
+        logMsg(` - ${layer.name} (ID: ${layerId}, Type: ${layer.geometryType})`)
     }
 
-    // Try to find "test_pipes"
+    // Find test_pipes layer
     testPipesLayer = findTestPipesExact()
-
     if (!testPipesLayer) {
-        logMsg("ERROR: Could not find test_pipes layer!")
+        logMsg("ERROR: test_pipes layer not found!")
     } else {
-        logMsg("SUCCESS: Found test_pipes layer: " + testPipesLayer.name)
-        logMsg("Layer CRS: " + testPipesLayer.crs.authid())
-        logMsg("Is valid? " + testPipesLayer.isValid())
+        logMsg("SUCCESS: Found layer: " + testPipesLayer.name)
+        logMsg("Geometry Type: " + testPipesLayer.geometryType)
+        logMsg("CRS: " + testPipesLayer.crs.authid())
     }
 }
 
