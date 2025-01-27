@@ -66,8 +66,7 @@ Item {
     iface.mainWindow().displayToast("Loading pipe layer...")
     
     // Get all layers from the project
-    let project = iface.project
-    let layers = project.mapLayers()
+    let layers = mapCanvas.mapSettings.layers
     
     // Debug: List all available layers
     for (let layerId in layers) {
