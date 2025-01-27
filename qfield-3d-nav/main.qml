@@ -116,6 +116,17 @@ property int initRetryCount: 0
 property int maxRetries: 10
 
 function initLayer() {
+    logMsg("=== initLayer() ===")
+    logMsg("iface exists? " + (iface ? "Yes" : "No"))
+    logMsg("iface.project exists? " + (iface && iface.project ? "Yes" : "No"))
+    logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas ? "Yes" : "No"))
+
+    if (iface && iface.project) {
+        logMsg("Project title: " + iface.project.title())
+        logMsg("Project layers: " + Object.keys(iface.project.mapLayers()).length)
+    }
+
+    
     if (initRetryCount >= maxRetries) {
         logMsg("Project load timeout")
         timer.stop()
