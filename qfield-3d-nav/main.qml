@@ -27,6 +27,25 @@ Item {
   property double currentOrientation: 0
   property double currentTilt: 90
 
+  property var pipeFeatures: {
+    if (!testPipesLayer) {
+      return []
+    }
+    let featureArray = []
+    let iterator = testPipesLayer.getFeatures()
+    let feature
+    while ((feature = iterator.nextFeature())) {
+      let geometry = feature.geometry
+      if (geometry) {
+        featureArray.push({
+          geometry: geometry,
+          id: feature.id
+        })
+      }
+    }
+    return featureArray
+  }
+
   //----------------------------------
   // Helper for toast + text fallback
   //----------------------------------
@@ -276,94 +295,20 @@ Item {
         // 2) Repeater for pipe lines
         //----------------------------
         Repeater3D {
-          model: {
-            // If the layer isn't found or empty, skip
-            if (!testPipesLayer) {
-              logMsg("Warning: testPipesLayer is null => no lines to display")
-              return []
-            }
-
-            let featureArray = []
-            let iterator = testPipesLayer.getFeatures()
-            let feature
-            while ((feature = iterator.nextFeature())) {
-              let geometry = feature.geometry
-              if (!geometry)
-                continue
-
-              // In QGIS, wkbType for 2D lines is often 2, for 2D multi-line is 5,
-              // but you may also see 1002 or 1015 for 3D lines.
-              let wkbType = geometry.wkbType()
-
-              // Single 2D
-              let line2d = geometry.asPolyline()
-              if (line2d && line2d.length > 1) {
-                for (let i = 0; i < line2d.length - 1; i++) {
-                  featureArray.push({
-                    start: {x: line2d[i].x,   y: line2d[i].y,   z: 0},
-                    end:   {x: line2d[i+1].x, y: line2d[i+1].y, z: 0}
-                  })
-                }
-              }
-
-              // Single 3D
-              let line3d = geometry.asPolyline3D()
-              if (line3d && line3d.length > 1) {
-                for (let i = 0; i < line3d.length - 1; i++) {
-                  featureArray.push({
-                    start: line3d[i],
-                    end:   line3d[i+1]
-                  })
-                }
-              }
-
-              // Multi-line 2D
-              if (wkbType === 5) {
-                let multi2d = geometry.asMultiPolyline()
-                if (multi2d) {
-                  for (let subLine of multi2d) {
-                    for (let i = 0; i < subLine.length - 1; i++) {
-                      featureArray.push({
-                        start: {x: subLine[i].x,   y: subLine[i].y,   z: 0},
-                        end:   {x: subLine[i+1].x, y: subLine[i+1].y, z: 0}
-                      })
-                    }
-                  }
-                }
-              }
-
-              // Multi-line 3D
-              if (wkbType === 1015) {
-                let multi3d = geometry.asMultiPolyline3D()
-                if (multi3d) {
-                  for (let subLine3D of multi3d) {
-                    for (let i = 0; i < subLine3D.length - 1; i++) {
-                      featureArray.push({
-                        start: subLine3D[i],
-                        end:   subLine3D[i+1]
-                      })
-                    }
-                  }
-                }
-              }
-            }
-
-            logMsg("Found " + featureArray.length + " line segments in test_pipes.shp")
-            return featureArray
-          }
+          model: pipeFeatures
 
           delegate: Model {
-            required property var start
-            required property var end
+            required property var geometry
+            required property var id
 
             // Calculate middle point
-            property real dx: end.x - start.x
-            property real dy: end.y - start.y
+            property real dx: geometry.asPolyline()[1].x - geometry.asPolyline()[0].x
+            property real dy: geometry.asPolyline()[1].y - geometry.asPolyline()[0].y
             property real segmentLength: Math.sqrt(dx*dx + dy*dy)
 
             position: {
-              let midX = (start.x + end.x) / 2 - plugin.currentPosition[0]
-              let midY = (start.y + end.y) / 2 - plugin.currentPosition[1]
+              let midX = (geometry.asPolyline()[0].x + geometry.asPolyline()[1].x) / 2 - plugin.currentPosition[0]
+              let midY = (geometry.asPolyline()[0].y + geometry.asPolyline()[1].y) / 2 - plugin.currentPosition[1]
               // For debugging, show each segment’s center & length
               logMsg("Pipe center => X:" + midX.toFixed(2) +
                      " Y:" + midY.toFixed(2) +
