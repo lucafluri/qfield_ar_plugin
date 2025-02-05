@@ -62,71 +62,58 @@ Item {
   // "test_pipes" in the active project
   //----------------------------------
   function findTestPipesExact() {
-    let project = iface.project
-    if (!project) {
-      logMsg("No project found!")
-      return null
+    if (!iface || !iface.project) {
+        logMsg("Interface or project not available")
+        return null
     }
 
-    let layersMap = project.mapLayers()
-    logMsg("Available layers:")
+    let layersMap = iface.project.mapLayers()
     for (let layerId in layersMap) {
-      let l = layersMap[layerId]
-      logMsg(" - " + l.name)
+        let layer = layersMap[layerId]
+        if (layer.name === "test_pipes") {
+            logMsg("Found test_pipes layer!")
+            return layer
+        }
     }
-
-    let exactName = "test_pipes" // The name you said your dataset has
-    for (let layerId in layersMap) {
-      let l = layersMap[layerId]
-      // If the layer name is exactly test_pipes.shp
-      if (l.name === exactName) {
-        logMsg("Exact match found: " + l.name)
-        return l
-      }
-    }
-    // If exact match not found, fallback: partial match
-    for (let layerId in layersMap) {
-      let l = layersMap[layerId]
-      if (l.name && l.name.toLowerCase().includes("test_pipes")) {
-        logMsg("Found partial match: " + l.name)
-        return l
-      }
-    }
+    logMsg("test_pipes layer not found")
     return null
   }
 
-Timer {
+  //----------------------------------
+  // On start: find the layer
+  //----------------------------------
+  Timer {
     id: timer
     interval: 1000
     repeat: true
     triggeredOnStart: true
     onTriggered: initLayer()
-}
+  }
 
-Connections {
+  Connections {
     target: iface.project
     function onProjectRead() {
         logMsg("Project fully loaded!")
         timer.stop()
         initLayer()
     }
-}
+  }
 
-property int initRetryCount: 0
-property int maxRetries: 10
+  property int initRetryCount: 0
+  property int maxRetries: 10
 
-function initLayer() {
+  function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("iface exists? " + (iface ? "Yes" : "No"))
     logMsg("iface.project exists? " + (iface && iface.project ? "Yes" : "No"))
     logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas ? "Yes" : "No"))
 
     if (iface && iface.project) {
-        logMsg("Project title: " + iface.project.title())
-        logMsg("Project layers: " + Object.keys(iface.project.mapLayers()).length)
+        logMsg("Project title: " + iface.project.title)
+        let layersMap = iface.project.mapLayers()
+        logMsg("Project layers: " + Object.keys(layersMap).length)
     }
 
-    
     if (initRetryCount >= maxRetries) {
         logMsg("Project load timeout")
         timer.stop()
@@ -142,36 +129,15 @@ function initLayer() {
     logMsg("Project loaded successfully!")
     timer.stop()
 
-    // Proceed with layer initialization
-    let layersMap = iface.project.mapLayers()
-    logMsg("Layers: " + Object.keys(layersMap).length)
+    // Find the pipes layer
     testPipesLayer = findTestPipesExact()
-}
-
-
-  //----------------------------------
-  // On start: find the layer
-  //----------------------------------
-  Component.onCompleted: {
-    iface.addItemToPluginsToolbar(pluginButton)
-    timer.running = true // Start retry timer
-    
-    //Qt.callLater(initLayer)
+    if (testPipesLayer) {
+        logMsg("Successfully initialized test_pipes layer")
+        initiated = true
+    } else {
+        logMsg("Failed to find test_pipes layer. Please check if the layer exists in your project.")
+    }
   }
-
- // Connections {
-  //  target: iface.project
-    
-  //  // QGIS emits this signal when layers are added/removed
-  //  function onLayersAdded() { 
-  //      testPipesLayer = findTestPipesExact()
-  //  }
-    
-  //  // QGIS emits this when a new project is opened
-  //  function onProjectRead() { 
-  //      testPipesLayer = findTestPipesExact()
-  //  }
-//}
 
   //----------------------------------
   // Keep track of position changes
