@@ -14,8 +14,8 @@ Item {
   //----------------------------------
   // Properties
   //----------------------------------
-  property var mainWindow: iface.mainWindow()
-  property var positionSource: iface.findItemByObjectName('positionSource')
+  property var mainWindow: __plugin.mainWindow
+  property var project: __plugin.project
   property var testPipesLayer
   property string pipe_text: ""
 
@@ -51,7 +51,7 @@ Item {
   //----------------------------------
   function logMsg(msg) {
     // 1) Show toast inside QField
-    iface.mainWindow().displayToast(msg, 3)
+    __plugin.mainWindow().displayToast(msg, 3)
 
     // 2) Also store in pipe_text so it appears in the UI
     pipe_text += "\n" + msg
@@ -62,12 +62,17 @@ Item {
   // "test_pipes" in the active project
   //----------------------------------
   function findTestPipesExact() {
-    if (!iface || !iface.project) {
-        logMsg("Interface or project not available")
+    if (!project) {
+        logMsg("Project not available")
         return null
     }
 
-    let layersMap = iface.project.mapLayers()
+    let layersMap = project.mapLayers
+    if (!layersMap) {
+        logMsg("No layers found in project")
+        return null
+    }
+
     for (let layerId in layersMap) {
         let layer = layersMap[layerId]
         if (layer.name === "test_pipes") {
@@ -91,8 +96,8 @@ Item {
   }
 
   Connections {
-    target: iface.project
-    function onProjectRead() {
+    target: project
+    function onReadProject() {
         logMsg("Project fully loaded!")
         timer.stop()
         initLayer()
@@ -104,14 +109,16 @@ Item {
 
   function initLayer() {
     logMsg("=== initLayer() ===")
-    logMsg("iface exists? " + (iface ? "Yes" : "No"))
-    logMsg("iface.project exists? " + (iface && iface.project ? "Yes" : "No"))
-    logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas ? "Yes" : "No"))
+    logMsg("Project exists? " + (project ? "Yes" : "No"))
 
-    if (iface && iface.project) {
-        logMsg("Project title: " + iface.project.title)
-        let layersMap = iface.project.mapLayers()
-        logMsg("Project layers: " + Object.keys(layersMap).length)
+    if (project) {
+        logMsg("Project title: " + project.title)
+        let layersMap = project.mapLayers
+        if (layersMap) {
+            logMsg("Project layers: " + Object.keys(layersMap).length)
+        } else {
+            logMsg("No layers found in project")
+        }
     }
 
     if (initRetryCount >= maxRetries) {
@@ -121,7 +128,7 @@ Item {
     }
     initRetryCount++
 
-    if (!iface || !iface.project || !iface.mapCanvas) {
+    if (!project) {
         logMsg("Waiting for project... (" + initRetryCount + "/" + maxRetries + ")")
         return
     }
