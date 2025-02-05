@@ -16,6 +16,7 @@ Item {
   //----------------------------------
   property var mainWindow: __plugin.mainWindow
   property var project: __plugin.project
+  property var positionSource: __plugin.findItemByObjectName('positionSource')
   property var testPipesLayer
   property string pipe_text: ""
 
@@ -82,6 +83,16 @@ Item {
     }
     logMsg("test_pipes layer not found")
     return null
+  }
+
+  //----------------------------------
+  // On start: initialize plugin
+  //----------------------------------
+  Component.onCompleted: {
+    // Add the plugin button to the toolbar
+    __plugin.addItemToToolbar(pluginButton)
+    // Start the timer to find the layer
+    timer.running = true
   }
 
   //----------------------------------
@@ -200,6 +211,7 @@ Item {
     iconColor: "white"
     bgcolor: Theme.darkGray
     round: true
+    visible: true
 
     onClicked: {
       threeDNavigationPopup.open()
