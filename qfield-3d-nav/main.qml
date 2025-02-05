@@ -63,17 +63,12 @@ Item {
   // "test_pipes" in the active project
   //----------------------------------
   function findTestPipesExact() {
-    if (!project) {
-        logMsg("Project not available")
+    if (!iface || !iface.project) {
+        logMsg("Interface or project not available")
         return null
     }
 
-    let layersMap = project.mapLayers
-    if (!layersMap) {
-        logMsg("No layers found in project")
-        return null
-    }
-
+    let layersMap = iface.project.mapLayers()
     for (let layerId in layersMap) {
         let layer = layersMap[layerId]
         if (layer.name === "test_pipes") {
@@ -83,16 +78,6 @@ Item {
     }
     logMsg("test_pipes layer not found")
     return null
-  }
-
-  //----------------------------------
-  // On start: initialize plugin
-  //----------------------------------
-  Component.onCompleted: {
-    // Add the plugin button to the toolbar
-    __plugin.addItemToToolbar(pluginButton)
-    // Start the timer to find the layer
-    timer.running = true
   }
 
   //----------------------------------
@@ -106,9 +91,9 @@ Item {
     onTriggered: initLayer()
   }
 
-  Connections {
-    target: project
-    function onReadProject() {
+Connections {
+    target: iface.project
+    function onProjectRead() {
         logMsg("Project fully loaded!")
         timer.stop()
         initLayer()
@@ -120,16 +105,14 @@ Item {
 
   function initLayer() {
     logMsg("=== initLayer() ===")
-    logMsg("Project exists? " + (project ? "Yes" : "No"))
+    logMsg("iface exists? " + (iface ? "Yes" : "No"))
+    logMsg("iface.project exists? " + (iface && iface.project ? "Yes" : "No"))
+    logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas ? "Yes" : "No"))
 
-    if (project) {
-        logMsg("Project title: " + project.title)
-        let layersMap = project.mapLayers
-        if (layersMap) {
-            logMsg("Project layers: " + Object.keys(layersMap).length)
-        } else {
-            logMsg("No layers found in project")
-        }
+    if (iface && iface.project) {
+        logMsg("Project title: " + iface.project.title)
+        let layersMap = iface.project.mapLayers()
+        logMsg("Project layers: " + Object.keys(layersMap).length)
     }
 
     if (initRetryCount >= maxRetries) {
