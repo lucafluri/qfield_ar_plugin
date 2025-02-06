@@ -60,7 +60,7 @@ Item {
 
   function findLayer() {
     for (let layer of iface.mapCanvas().mapSettings.layers) {
-        logMsg(layer.fileName)
+        logMsg(layer)
         if (layer.fileName === "test_pipes.sh") {
             return layer
         }
