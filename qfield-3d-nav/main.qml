@@ -108,14 +108,12 @@ function initLayer() {
 
     let layers = projectUtils.mapLayers()
     logMsg("Layers count: " + layers.length)
+    logMsg("Layers: " + layers)
+    logMsg("Layer 0: " + layers[0])
+     
 
-     for (let layerId in layers) {
-            logMsg("Layer ID:", layerId)
-            logMsg("Layer Name:", layers[layerId].name)
-        }
-
-      testPipesLayer = findLayerByName("test_pipes")
-      logMsg("testPipesLayer: " + testPipesLayer)
+      // testPipesLayer = findLayerByName("test_pipes")
+      // logMsg("testPipesLayer: " + testPipesLayer)
     
     if (initRetryCount >= maxRetries) {
         logMsg("Layer load timeout")
