@@ -16,7 +16,6 @@ Item {
   //----------------------------------
   property var mainWindow: iface.mainWindow()
   property var positionSource: iface.findItemByObjectName('positionSource')
-  property var mapCanvas: parent.mapCanvas  // or use proper id reference
 
   property var testPipesLayer
   property string pipe_text: ""
@@ -59,9 +58,9 @@ Item {
     pipe_text += "\n" + msg
   }
 
-  function findLayer(layerName) {
-    for (let layer of mapCanvas.mapSettings.layers) {
-        if (layer.name === layerName) {
+  function findLayer() {
+    for (let layer of iface.mapCanvas().layers) {
+        if (layer.fileName === "test_pipes.sh") {
             return layer
         }
     }
