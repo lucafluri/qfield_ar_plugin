@@ -118,20 +118,26 @@ property int maxRetries: 10
 function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("iface exists? " + (iface ? "Yes" : "No"))
-    logMsg("projectLayers exists? " + (iface && iface.projectLayers ? "Yes" : "No"))
     
-    if (!iface) {
-        logMsg("No iface available")
-        return
+    // Log available properties on iface
+    if (iface) {
+        logMsg("iface properties:")
+        for (let prop in iface) {
+            logMsg(" - " + prop)
+        }
+        
+        // Try different known properties
+        logMsg("project? " + (iface.project ? "Yes" : "No"))
+        if (iface.project) {
+            logMsg("project properties:")
+            for (let prop in iface.project) {
+                logMsg(" - " + prop)
+            }
+        }
+        
+        logMsg("layers? " + (iface.layers ? "Yes" : "No"))
+        logMsg("mapCanvas? " + (iface.mapCanvas ? "Yes" : "No"))
     }
-
-    let layers = iface.projectLayers()
-    if (!layers) {
-        logMsg("No layers available")
-        return
-    }
-
-    logMsg("Number of layers: " + layers.length)
     
     if (initRetryCount >= maxRetries) {
         logMsg("Layer load timeout")
@@ -140,18 +146,9 @@ function initLayer() {
     }
     initRetryCount++
 
-    if (!layers || layers.length === 0) {
-        logMsg("Waiting for layers... (" + initRetryCount + "/" + maxRetries + ")")
-        return
-    }
-
-    logMsg("Layers loaded successfully!")
-    timer.stop()
-
-    // Proceed with layer initialization
-    testPipesLayer = findTestPipesExact()
+    // Keep retrying until we find what we need
+    return
 }
-
 
   //----------------------------------
   // On start: find the layer
