@@ -16,6 +16,8 @@ Item {
   //----------------------------------
   property var mainWindow: iface.mainWindow()
   property var positionSource: iface.findItemByObjectName('positionSource')
+  property var projectUtils: ProjectUtils
+
 
   property var testPipesLayer
   property string pipe_text: ""
@@ -58,15 +60,23 @@ Item {
     pipe_text += "\n" + msg
   }
 
-  function findLayer() {
-    for (let layer of iface.mapCanvas().mapSettings.layers) {
-        logMsg(layer)
-        if (layer.fileName === "test_pipes.sh") {
-            return layer
-        }
+  function getAllLayers() {
+        // If no project is specified, it uses the current project
+        let layers = projectUtils.mapLayers()
+        return layers
     }
-    return null
-}
+
+  // Function to find specific layer by name
+  function findLayerByName(layerName) {
+      let layers = getAllLayers()
+      for (let layerId in layers) {
+          let layer = layers[layerId]
+          if (layer.name === layerName) {
+              return layer
+          }
+      }
+      return null
+  }
 
   
 Timer {
@@ -93,8 +103,12 @@ function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("iface exists? " + (iface ? "Yes" : "No"))
     logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
-    logMsg("Layer exists? " + (findLayer() ? "Yes" : "No"))
-    
+
+     for (let layerId in layers) {
+            logMsg("Layer ID:", layerId)
+            logMsg("Layer Name:", layers[layerId].name)
+        }
+
     // Log available properties on iface
     if (iface) {
         logMsg("iface properties:")
