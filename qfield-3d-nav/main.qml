@@ -58,7 +58,7 @@ Item {
   }
 
   function findLayer(layerName) {
-    for (let layer of iface.mapCanvas.mapSettings.layers) {
+    for (let layer of window.mapCanvas.mapSettings.layers) {
         if (layer.name === layerName) {
             return layer
         }
