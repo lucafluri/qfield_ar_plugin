@@ -16,6 +16,8 @@ Item {
   //----------------------------------
   property var mainWindow: iface.mainWindow()
   property var positionSource: iface.findItemByObjectName('positionSource')
+  property var mapCanvas: parent.mapCanvas  // or use proper id reference
+
   property var testPipesLayer
   property string pipe_text: ""
 
@@ -58,7 +60,7 @@ Item {
   }
 
   function findLayer(layerName) {
-    for (let layer of window.mapCanvas.mapSettings.layers) {
+    for (let layer of mapCanvas.mapSettings.layers) {
         if (layer.name === layerName) {
             return layer
         }
