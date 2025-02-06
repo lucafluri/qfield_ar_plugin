@@ -114,9 +114,10 @@ property int maxRetries: 10
 function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("iface.project exists? " + (iface && iface.project ? "Yes" : "No"))
-    logMsg("project exists? " + (project ? "Yes" : "No"))
-    logMsg("layer exists? " + (project.layer("test_pipes") ? "Yes" : "No"))
     logMsg("iface layer exists? " + (iface.getLayerByName("test_pipes") ? "Yes" : "No"))
+    // logMsg("project exists? " + (project ? "Yes" : "No"))
+    // logMsg("layer exists? " + (project.layer("test_pipes") ? "Yes" : "No"))
+    
 
     if (iface && iface.project) {
         logMsg("Project title: " + iface.project.title())
