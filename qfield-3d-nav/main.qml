@@ -103,10 +103,10 @@ function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("projectUtils exists?" + (projectUtils ? "Yes" : "No"))
     logMsg("mapLayers: " + (projectUtils && projectUtils.mapLayers()))
-    logMsg("iface exists? " + (iface ? "Yes" : "No"))
-    logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
+    // logMsg("iface exists? " + (iface ? "Yes" : "No"))
+    // logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
 
-    let layers = getAllLayers()
+    let layers = projectUtils.mapLayers()
     logMsg("Layers count: " + layers.length)
 
      for (let layerId in layers) {
