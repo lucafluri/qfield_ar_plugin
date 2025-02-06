@@ -62,28 +62,32 @@ Item {
   // "test_pipes" in the active project
   //----------------------------------
   function findTestPipesExact() {
-    let project = iface.project
-    if (!project) {
-      logMsg("No project found!")
+    if (!iface) {
+      logMsg("No iface found!")
       return null
     }
 
-    let layersMap = project.mapLayers()
+    let layers = iface.projectLayers()
+    if (!layers) {
+      logMsg("No layers found!")
+      return null
+    }
+
     logMsg("Available layers:")
-    for (let layerId in layersMap) {
-      let l = layersMap[layerId]
-      logMsg(" - " + l.name + " (id: " + layerId + ")")
+    for (let i = 0; i < layers.length; i++) {
+      let layer = layers[i]
+      logMsg(" - " + layer.name + " (id: " + i + ")")
       
       // Try matching by name
-      if (l.name === "test_pipes") {
+      if (layer.name === "test_pipes") {
         logMsg("Found layer by exact name match!")
-        return l
+        return layer
       }
       
       // Fallback: try matching if name contains test_pipes
-      if (l.name.toLowerCase().includes("test_pipes")) {
+      if (layer.name.toLowerCase().includes("test_pipes")) {
         logMsg("Found layer by partial name match!")
-        return l
+        return layer
       }
     }
     
@@ -113,36 +117,38 @@ property int maxRetries: 10
 
 function initLayer() {
     logMsg("=== initLayer() ===")
-    logMsg("iface.project exists? " + (iface && iface.project ? "Yes" : "No"))
-    logMsg("iface layer exists? " + (iface.projectLayers() ? "Yes" : "No"))
-    // logMsg("project exists? " + (project ? "Yes" : "No"))
-    // logMsg("layer exists? " + (project.layer("test_pipes") ? "Yes" : "No"))
+    logMsg("iface exists? " + (iface ? "Yes" : "No"))
+    logMsg("projectLayers exists? " + (iface && iface.projectLayers ? "Yes" : "No"))
     
-
-    if (iface && iface.project) {
-        logMsg("Project title: " + iface.project.title())
-        logMsg("Project layers: " + Object.keys(iface.project.mapLayers()).length)
+    if (!iface) {
+        logMsg("No iface available")
+        return
     }
 
+    let layers = iface.projectLayers()
+    if (!layers) {
+        logMsg("No layers available")
+        return
+    }
+
+    logMsg("Number of layers: " + layers.length)
     
     if (initRetryCount >= maxRetries) {
-        logMsg("Project load timeout")
+        logMsg("Layer load timeout")
         timer.stop()
         return
     }
     initRetryCount++
 
-    if (!iface || !iface.project || !iface.mapCanvas) {
-        logMsg("Waiting for project... (" + initRetryCount + "/" + maxRetries + ")")
+    if (!layers || layers.length === 0) {
+        logMsg("Waiting for layers... (" + initRetryCount + "/" + maxRetries + ")")
         return
     }
 
-    logMsg("Project loaded successfully!")
+    logMsg("Layers loaded successfully!")
     timer.stop()
 
     // Proceed with layer initialization
-    let layersMap = iface.project.mapLayers()
-    logMsg("Layers: " + Object.keys(layersMap).length)
     testPipesLayer = findTestPipesExact()
 }
 
