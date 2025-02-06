@@ -91,7 +91,8 @@ property int maxRetries: 10
 function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("iface exists? " + (iface ? "Yes" : "No"))
-    logMsg("Layer exists? " + (findLayer("test_pipes") ? "Yes" : "No"))
+    logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas ? "Yes" : "No"))
+    logMsg("Layer exists? " + (findLayer() ? "Yes" : "No"))
     
     // Log available properties on iface
     if (iface) {
