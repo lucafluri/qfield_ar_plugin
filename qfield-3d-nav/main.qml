@@ -59,7 +59,7 @@ Item {
   }
 
   function findLayer() {
-    for (let layer of iface.mapCanvas.layers) {
+    for (let layer of iface.mapCanvas().layers) {
         if (layer.fileName === "test_pipes.sh") {
             return layer
         }
@@ -91,7 +91,7 @@ property int maxRetries: 10
 function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("iface exists? " + (iface ? "Yes" : "No"))
-    logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas ? "Yes" : "No"))
+    logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
     logMsg("Layer exists? " + (findLayer() ? "Yes" : "No"))
     
     // Log available properties on iface
