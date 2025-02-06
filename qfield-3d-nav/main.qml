@@ -62,7 +62,7 @@ Item {
 
   function getAllLayers() {
         // If no project is specified, it uses the current project
-        let layers = projectUtils.mapLayers()
+        let layers = ProjectUtils.mapLayers()
         return layers
     }
 
