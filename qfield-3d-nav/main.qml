@@ -111,25 +111,8 @@ function initLayer() {
             logMsg("Layer Name:", layers[layerId].name)
         }
 
-    // Log available properties on iface
-    if (iface) {
-        logMsg("iface properties:")
-        for (let prop in iface) {
-            logMsg(" - " + prop)
-        }
-        
-        // Try different known properties
-        logMsg("project? " + (iface.project ? "Yes" : "No"))
-        if (iface.project) {
-            logMsg("project properties:")
-            for (let prop in iface.project) {
-                logMsg(" - " + prop)
-            }
-        }
-        
-        logMsg("layers? " + (iface.layers ? "Yes" : "No"))
-        logMsg("mapCanvas? " + (iface.mapCanvas ? "Yes" : "No"))
-    }
+      testPipesLayer = findLayerByName("test_pipes")
+      logMsg("testPipesLayer: " + testPipesLayer)
     
     if (initRetryCount >= maxRetries) {
         logMsg("Layer load timeout")
