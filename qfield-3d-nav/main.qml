@@ -101,6 +101,7 @@ property int maxRetries: 10
 
 function initLayer() {
     logMsg("=== initLayer() ===")
+    logMsg("projectUtils exists? " + (projectUtils ? "Yes" : "No"))
     logMsg("iface exists? " + (iface ? "Yes" : "No"))
     logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
 
