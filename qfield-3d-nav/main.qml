@@ -57,44 +57,16 @@ Item {
     pipe_text += "\n" + msg
   }
 
-  //----------------------------------
-  // Attempt to find the layer by exact name:
-  // "test_pipes" in the active project
-  //----------------------------------
-  function findTestPipesExact() {
-    if (!iface) {
-      logMsg("No iface found!")
-      return null
+  function findLayer(layerName) {
+    for (let layer of mapCanvas.mapSettings.layers) {
+        if (layer.name === layerName) {
+            return layer
+        }
     }
-
-    let layers = iface.projectLayers()
-    if (!layers) {
-      logMsg("No layers found!")
-      return null
-    }
-
-    logMsg("Available layers:")
-    for (let i = 0; i < layers.length; i++) {
-      let layer = layers[i]
-      logMsg(" - " + layer.name + " (id: " + i + ")")
-      
-      // Try matching by name
-      if (layer.name === "test_pipes") {
-        logMsg("Found layer by exact name match!")
-        return layer
-      }
-      
-      // Fallback: try matching if name contains test_pipes
-      if (layer.name.toLowerCase().includes("test_pipes")) {
-        logMsg("Found layer by partial name match!")
-        return layer
-      }
-    }
-    
-    logMsg("No matching layer found!")
     return null
-  }
+}
 
+  
 Timer {
     id: timer
     interval: 1000
@@ -118,6 +90,7 @@ property int maxRetries: 10
 function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("iface exists? " + (iface ? "Yes" : "No"))
+    logMsg("Layer exists? " + (findLayer("test_pipes") ? "Yes" : "No"))
     
     // Log available properties on iface
     if (iface) {
@@ -159,20 +132,6 @@ function initLayer() {
     
     //Qt.callLater(initLayer)
   }
-
- // Connections {
-  //  target: iface.project
-    
-  //  // QGIS emits this signal when layers are added/removed
-  //  function onLayersAdded() { 
-  //      testPipesLayer = findTestPipesExact()
-  //  }
-    
-  //  // QGIS emits this when a new project is opened
-  //  function onProjectRead() { 
-  //      testPipesLayer = findTestPipesExact()
-  //  }
-//}
 
   //----------------------------------
   // Keep track of position changes
