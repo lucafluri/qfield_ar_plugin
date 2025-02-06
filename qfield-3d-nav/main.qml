@@ -131,9 +131,9 @@ function initLayer() {
   //----------------------------------
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton)
-    timer.running = true // Start retry timer
+    // timer.running = true // Start retry timer
     
-    //Qt.callLater(initLayer)
+    Qt.callLater(initLayer)
   }
 
   //----------------------------------
