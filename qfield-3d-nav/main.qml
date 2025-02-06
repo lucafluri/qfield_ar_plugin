@@ -211,7 +211,6 @@ Item {
     iconColor: "white"
     bgcolor: Theme.darkGray
     round: true
-    visible: true
 
     onClicked: {
       threeDNavigationPopup.open()
