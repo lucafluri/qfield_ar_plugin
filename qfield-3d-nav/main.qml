@@ -105,6 +105,7 @@ function initLayer() {
     logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
 
     let layers = getAllLayers()
+    logMsg("Layers count: " + layers.length)
 
      for (let layerId in layers) {
             logMsg("Layer ID:", layerId)
