@@ -72,26 +72,22 @@ Item {
     logMsg("Available layers:")
     for (let layerId in layersMap) {
       let l = layersMap[layerId]
-      logMsg(" - " + l.name)
-    }
-
-    let exactName = "test_pipes" // The name you said your dataset has
-    for (let layerId in layersMap) {
-      let l = layersMap[layerId]
-      // If the layer name is exactly test_pipes.shp
-      if (l.name === exactName) {
-        logMsg("Exact match found: " + l.name)
+      logMsg(" - " + l.name + " (id: " + layerId + ")")
+      
+      // Try matching by name
+      if (l.name === "test_pipes") {
+        logMsg("Found layer by exact name match!")
+        return l
+      }
+      
+      // Fallback: try matching if name contains test_pipes
+      if (l.name.toLowerCase().includes("test_pipes")) {
+        logMsg("Found layer by partial name match!")
         return l
       }
     }
-    // If exact match not found, fallback: partial match
-    for (let layerId in layersMap) {
-      let l = layersMap[layerId]
-      if (l.name && l.name.toLowerCase().includes("test_pipes")) {
-        logMsg("Found partial match: " + l.name)
-        return l
-      }
-    }
+    
+    logMsg("No matching layer found!")
     return null
   }
 
