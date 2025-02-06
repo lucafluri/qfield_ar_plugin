@@ -14,9 +14,8 @@ Item {
   //----------------------------------
   // Properties
   //----------------------------------
-  property var mainWindow: __plugin.mainWindow
-  property var project: __plugin.project
-  property var positionSource: __plugin.findItemByObjectName('positionSource')
+  property var mainWindow: iface.mainWindow()
+  property var positionSource: iface.findItemByObjectName('positionSource')
   property var testPipesLayer
   property string pipe_text: ""
 
@@ -52,7 +51,7 @@ Item {
   //----------------------------------
   function logMsg(msg) {
     // 1) Show toast inside QField
-    __plugin.mainWindow().displayToast(msg, 3)
+    iface.mainWindow().displayToast(msg, 3)
 
     // 2) Also store in pipe_text so it appears in the UI
     pipe_text += "\n" + msg
@@ -91,7 +90,7 @@ Item {
     onTriggered: initLayer()
   }
 
-Connections {
+  Connections {
     target: iface.project
     function onProjectRead() {
         logMsg("Project fully loaded!")
@@ -122,7 +121,7 @@ Connections {
     }
     initRetryCount++
 
-    if (!project) {
+    if (!iface || !iface.project || !iface.mapCanvas) {
         logMsg("Waiting for project... (" + initRetryCount + "/" + maxRetries + ")")
         return
     }
