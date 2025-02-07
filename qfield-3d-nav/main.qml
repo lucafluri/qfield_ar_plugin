@@ -24,6 +24,8 @@ Item {
 
   property bool initiated: false
   property var points: []
+  property var fakePipeStart: [0, 0, 0]
+  property var fakePipeEnd: [0, 10, 0]  // 10 meters north
 
   property var positions: []
   property var currentPosition: [0, 0, 0]
@@ -103,10 +105,6 @@ function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("projectUtils exists?" + (projectUtils ? "Yes" : "No"))
     logMsg("mapLayers:" + (projectUtils && projectUtils.mapLayers()))
-    logMsg("QgsProject.instance() exists?" + (QgsProject.instance() ? "Yes" : "No"))
-    logMsg("QgsProject.instance().mapLayers() exists?" + (QgsProject.instance() && QgsProject.instance().mapLayers() ? "Yes" : "No"))
-    // logMsg("iface exists? " + (iface ? "Yes" : "No"))
-    // logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
 
     let layers = projectUtils.mapLayers(QgsProject.instance())
     logMsg("Layers: " + layers)
@@ -221,6 +219,8 @@ function initLayer() {
         let y = positionSource.projectedPosition.y
 
         plugin.currentPosition = [x, y, 0]
+        plugin.fakePipeStart = [x, y, 0]
+        plugin.fakePipeEnd = [x, y + 10, 0]  // 10 meters north
         plugin.points = [
           [x + 5, y,     0],
           [x,     y + 5, 0],
@@ -302,6 +302,33 @@ function initLayer() {
               roughness: 0.5
             }
           }
+        }
+
+        // Fake pipe visualization
+        Model {
+            // Calculate pipe properties
+            property real dx: fakePipeEnd[0] - fakePipeStart[0]
+            property real dy: fakePipeEnd[1] - fakePipeStart[1]
+            property real pipeLength: Math.sqrt(dx*dx + dy*dy)
+
+            position: {
+              let midX = (fakePipeStart[0] + fakePipeEnd[0]) / 2 - plugin.currentPosition[0]
+              let midY = (fakePipeStart[1] + fakePipeEnd[1]) / 2 - plugin.currentPosition[1]
+              return Qt.vector3d(midX, midY, 0)
+            }
+
+            rotation: {
+              let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
+              return Qt.quaternion.fromEulerAngles(0, 0, angleDeg)
+            }
+
+            scale: Qt.vector3d(pipeLength, 0.2, 0.2)  // Made the pipe a bit thicker for visibility
+            source: "#Cylinder"
+            
+            materials: PrincipledMaterial {
+              baseColor: "red"  // Made it red to distinguish from other pipes
+              roughness: 0.3
+            }
         }
 
         //----------------------------
