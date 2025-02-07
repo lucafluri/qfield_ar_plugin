@@ -106,7 +106,7 @@ function initLayer() {
     logMsg("projectUtils exists?" + (projectUtils ? "Yes" : "No"))
     logMsg("mapLayers:" + (projectUtils && projectUtils.mapLayers()))
 
-    let layers = projectUtils.mapLayers()
+    let layers = projectUtils.mapLayers(QgsProject.instance())
     logMsg("Layers: " + layers)
     logMsg("Layer 0: " + layers[0])
      
