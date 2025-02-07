@@ -109,9 +109,9 @@ function initLayer() {
     // logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
 
     let layers = projectUtils.mapLayers()
-    logMsg("Layers count: " + layers.length)
     logMsg("Layers: " + layers)
-    logMsg("Layer 0: " + layers[0])
+    logMsg("Layer 0: " + layers["test_pipes"])
+    logMsg("Layer 1: " + layers["test_pipes_7c949ab3_406c_4607_b59c_36bf19fd1a19"])
      
 
       // testPipesLayer = findLayerByName("test_pipes")
