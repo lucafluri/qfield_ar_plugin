@@ -103,10 +103,12 @@ function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("projectUtils exists?" + (projectUtils ? "Yes" : "No"))
     logMsg("mapLayers:" + (projectUtils && projectUtils.mapLayers()))
+    logMsg("QgsProject.instance() exists?" + (QgsProject.instance() ? "Yes" : "No"))
+    logMsg("QgsProject.instance().mapLayers() exists?" + (QgsProject.instance() && QgsProject.instance().mapLayers() ? "Yes" : "No"))
     // logMsg("iface exists? " + (iface ? "Yes" : "No"))
     // logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
 
-    let layers = projectUtils.mapLayers(LayerResolver.project())
+    let layers = projectUtils.mapLayers(QgsProject.instance())
     logMsg("Layers: " + layers)
     logMsg("Layer 0: " + layers[0])
      
