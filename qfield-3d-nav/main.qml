@@ -106,7 +106,7 @@ function initLayer() {
     logMsg("projectUtils exists?" + (projectUtils ? "Yes" : "No"))
     logMsg("mapLayers:" + (projectUtils && projectUtils.mapLayers()))
 
-    let layers = projectUtils.mapLayers(QgsProject.instance())
+    let layers = projectUtils.mapLayers()
     logMsg("Layers: " + layers)
     logMsg("Layer 0: " + layers[0])
      
@@ -219,10 +219,9 @@ function initLayer() {
         let y = positionSource.projectedPosition.y
 
         plugin.currentPosition = [x, y, 0]
-        plugin.fakePipeStart = [x, y, 0]
-        plugin.fakePipeEnd = [x, y + 10, 0]  // 10 meters north
+        plugin.fakePipeStart = [x - 5, y, 0]  // 5m west
+        plugin.fakePipeEnd = [x + 5, y, 0]    // 5m east
         plugin.points = [
-          [x + 5, y,     0],
           [x,     y + 5, 0],
           [x - 5, y,     0],
           [x,     y - 5, 0],
