@@ -25,7 +25,7 @@ Item {
   property bool initiated: false
   property var points: []
   property var fakePipeStart: [0, 0, 0]
-  property var fakePipeEnd: [0, 10, 0]  // 10 meters north
+  property var fakePipeEnd: [0, 0, 0]
 
   property var positions: []
   property var currentPosition: [0, 0, 0]
@@ -105,8 +105,11 @@ function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("projectUtils exists?" + (projectUtils ? "Yes" : "No"))
     logMsg("mapLayers:" + (projectUtils && projectUtils.mapLayers()))
+    // logMsg("iface exists? " + (iface ? "Yes" : "No"))
+    // logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
 
     let layers = projectUtils.mapLayers()
+    logMsg("Layers count: " + layers.length)
     logMsg("Layers: " + layers)
     logMsg("Layer 0: " + layers[0])
      
@@ -222,6 +225,7 @@ function initLayer() {
         plugin.fakePipeStart = [x - 5, y, 0]  // 5m west
         plugin.fakePipeEnd = [x + 5, y, 0]    // 5m east
         plugin.points = [
+          [x + 5, y,     0],
           [x,     y + 5, 0],
           [x - 5, y,     0],
           [x,     y - 5, 0],
@@ -267,7 +271,13 @@ function initLayer() {
       PerspectiveCamera {
         id: camera
         position: Qt.vector3d(0, 0, 1.25)
-        rotation: Qt.quaternion(plugin.currentTilt, 1, 0, 0)
+        rotation: Quaternion.fromAxesAndAngles(
+                      Qt.vector3d(1,0,0),
+                      plugin.currentTilt,
+                      Qt.vector3d(0,1,0),
+                      0,
+                      Qt.vector3d(0,0,1),
+                      -plugin.currentOrientation)
         clipNear: 0.01
       }
 
@@ -297,26 +307,14 @@ function initLayer() {
           }
         }
 
-        // Fake pipe visualization
+        // West-East pipe visualization
         Model {
-            // Calculate pipe properties
-            property real dx: fakePipeEnd[0] - fakePipeStart[0]
-            property real dy: fakePipeEnd[1] - fakePipeStart[1]
-            property real pipeLength: Math.sqrt(dx*dx + dy*dy)
-
-            position: {
-              let midX = (fakePipeStart[0] + fakePipeEnd[0]) / 2 - plugin.currentPosition[0]
-              let midY = (fakePipeStart[1] + fakePipeEnd[1]) / 2 - plugin.currentPosition[1]
-              return Qt.vector3d(midX, midY, 0)
-            }
-
-            rotation: Qt.quaternion(Math.atan2(dy, dx) * 180 / Math.PI, 0, 0, 1)
-
-            scale: Qt.vector3d(pipeLength, 0.2, 0.2)  // Made the pipe a bit thicker for visibility
+            position: Qt.vector3d(0, 0, 0)  // Centered on user
+            rotation: Qt.quaternion(0, 0, 0, 1)  // No rotation needed for west-east
+            scale: Qt.vector3d(10, 0.2, 0.2)  // 10m long, 0.2m diameter
             source: "#Cylinder"
-            
             materials: PrincipledMaterial {
-              baseColor: "red"  // Made it red to distinguish from other pipes
+              baseColor: "red"
               roughness: 0.3
             }
         }
@@ -347,7 +345,10 @@ function initLayer() {
             }
 
             // Rotate cylinder to line up with the segment
-            rotation: Qt.quaternion(Math.atan2(dy, dx) * 180 / Math.PI, 0, 0, 1)
+            rotation: {
+              let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
+              return Qt.quaternion.fromEulerAngles(0, 0, angleDeg)
+            }
 
             // Scale: length in x-direction, small radius in y/z
             scale: Qt.vector3d(segmentLength, 0.002, 0.002)
@@ -358,6 +359,35 @@ function initLayer() {
               roughness: 0.3
             }
           }
+        }
+
+        //----------------------------
+        // 3) Fake pipe visualization
+        //----------------------------
+        Model {
+            // Calculate pipe properties
+            property real dx: fakePipeEnd[0] - fakePipeStart[0]
+            property real dy: fakePipeEnd[1] - fakePipeStart[1]
+            property real pipeLength: Math.sqrt(dx*dx + dy*dy)
+
+            position: {
+              let midX = (fakePipeStart[0] + fakePipeEnd[0]) / 2 - plugin.currentPosition[0]
+              let midY = (fakePipeStart[1] + fakePipeEnd[1]) / 2 - plugin.currentPosition[1]
+              return Qt.vector3d(midX, midY, 0)
+            }
+
+            rotation: {
+              let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
+              return Qt.quaternion(angleDeg, 0, 0, 1)
+            }
+
+            scale: Qt.vector3d(pipeLength, 0.2, 0.2)  // Made the pipe a bit thicker for visibility
+            source: "#Cylinder"
+            
+            materials: PrincipledMaterial {
+              baseColor: "red"  // Made it red to distinguish from other pipes
+              roughness: 0.3
+            }
         }
       }
     }
@@ -438,7 +468,14 @@ function initLayer() {
         let isStable = Math.max(...tilts) - Math.min(...tilts) < stableThreshold
 
         if (isStable) {
-          camera.rotation = Qt.quaternion(averageTilt, 1, 0, 0)
+          camera.rotation = Quaternion.fromAxesAndAngles(
+              Qt.vector3d(1,0,0),
+              averageTilt,
+              Qt.vector3d(0,1,0),
+              0,
+              Qt.vector3d(0,0,1),
+              -plugin.currentOrientation
+          )
         }
 
         plugin.currentTilt = averageTilt
