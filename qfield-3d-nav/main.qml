@@ -106,7 +106,7 @@ function initLayer() {
     // logMsg("iface exists? " + (iface ? "Yes" : "No"))
     // logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
 
-    let layers = projectUtils.mapLayers()
+    let layers = projectUtils.mapLayers(LayerResolver.project())
     logMsg("Layers: " + layers)
     logMsg("Layer 0: " + layers[0])
      
