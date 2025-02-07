@@ -268,13 +268,7 @@ function initLayer() {
       PerspectiveCamera {
         id: camera
         position: Qt.vector3d(0, 0, 1.25)
-        rotation: Quaternion.fromAxesAndAngles(
-                      Qt.vector3d(1,0,0),
-                      plugin.currentTilt,
-                      Qt.vector3d(0,1,0),
-                      0,
-                      Qt.vector3d(0,0,1),
-                      -plugin.currentOrientation)
+        rotation: Qt.quaternion(plugin.currentTilt, 1, 0, 0)
         clipNear: 0.01
       }
 
@@ -317,10 +311,7 @@ function initLayer() {
               return Qt.vector3d(midX, midY, 0)
             }
 
-            rotation: {
-              let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
-              return Qt.quaternion.fromEulerAngles(0, 0, angleDeg)
-            }
+            rotation: Qt.quaternion(Math.atan2(dy, dx) * 180 / Math.PI, 0, 0, 1)
 
             scale: Qt.vector3d(pipeLength, 0.2, 0.2)  // Made the pipe a bit thicker for visibility
             source: "#Cylinder"
@@ -357,10 +348,7 @@ function initLayer() {
             }
 
             // Rotate cylinder to line up with the segment
-            rotation: {
-              let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
-              return Qt.quaternion.fromEulerAngles(0, 0, angleDeg)
-            }
+            rotation: Qt.quaternion(Math.atan2(dy, dx) * 180 / Math.PI, 0, 0, 1)
 
             // Scale: length in x-direction, small radius in y/z
             scale: Qt.vector3d(segmentLength, 0.002, 0.002)
@@ -451,14 +439,7 @@ function initLayer() {
         let isStable = Math.max(...tilts) - Math.min(...tilts) < stableThreshold
 
         if (isStable) {
-          camera.rotation = Quaternion.fromAxesAndAngles(
-              Qt.vector3d(1,0,0),
-              averageTilt,
-              Qt.vector3d(0,1,0),
-              0,
-              Qt.vector3d(0,0,1),
-              -plugin.currentOrientation
-          )
+          camera.rotation = Qt.quaternion(averageTilt, 1, 0, 0)
         }
 
         plugin.currentTilt = averageTilt
