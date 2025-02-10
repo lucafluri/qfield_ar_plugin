@@ -1,33 +1,28 @@
-name: Zip Folder and Push
+name: Zip Folder and Commit ZIP
 
-on:
-  push:
+on: [push, workflow_dispatch]
+
+permissions:
+  contents: write
 
 jobs:
-  zip_and_push:
+  zip_and_commit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0  # Fetch the full history so we can push commits
+        
+      - name: Delete old zip file
+        run: rm -f qfield-3d-nav.zip
 
-      - name: Zip qfield-3d-nav folder
+      - name: Zip the qfield-3d-nav folder
         run: |
           zip -r qfield-3d-nav.zip qfield-3d-nav/
+          
+      - name: Commit and Push ZIP File
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Commit zipped folder qfield-3d-nav.zip [skip ci]"
+          add: 'qfield-3d-nav.zip'
+      
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      - name: Commit and push zip file
-        run: |
-          git add qfield-3d-nav.zip
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Add zipped folder qfield-3d-nav.zip [skip ci]"
-            git push origin HEAD:main
-          fi
