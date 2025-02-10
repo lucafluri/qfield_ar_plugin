@@ -6,6 +6,7 @@ import QtSensors
 
 import org.qfield
 import org.qgis
+import org.qgis.geometry 1.0
 import Theme
 
 Item {
@@ -326,25 +327,32 @@ function initLayer() {
             required property var id 
 
             // Use LinePolygonShape to handle the geometry
-            property var lineShape: LinePolygonShape {
-              geometry: QgsGeometryWrapper {
-                qgsGeometry: geometry
-                crs: testPipesLayer.crs
+            property var lineShape: {
+              try {
+                return LinePolygonShape {
+                  geometry: QgsGeometryWrapper {
+                    qgsGeometry: geometry || null
+                    crs: testPipesLayer ? testPipesLayer.crs : null
+                  }
+                  mapSettings: iface && iface.mapCanvas() ? iface.mapCanvas().mapSettings : null
+                  color: "blue"
+                  lineWidth: 2
+                }
+              } catch (e) {
+                console.error("Error creating LinePolygonShape:", e)
+                return null
               }
-              mapSettings: iface.mapCanvas().mapSettings 
-              color: "blue"
-              lineWidth: 2
             }
 
             // Calculate middle point using the first polyline
-            property var points: lineShape.polylines[0]
-            property real dx: points[1].x() - points[0].x()
-            property real dy: points[1].y() - points[0].y()
-            property real segmentLength: Math.sqrt(dx*dx + dy*dy)
+            property var points: lineShape ? lineShape.polylines[0] : null
+            property real dx: points ? points[1].x() - points[0].x() : 0
+            property real dy: points ? points[1].y() - points[0].y() : 0
+            property real segmentLength: points ? Math.sqrt(dx*dx + dy*dy) : 0
 
             position: {
-              let midX = (points[0].x() + points[1].x()) / 2 - plugin.currentPosition[0]
-              let midY = (points[0].y() + points[1].y()) / 2 - plugin.currentPosition[1]
+              let midX = points ? (points[0].x() + points[1].x()) / 2 - plugin.currentPosition[0] : 0
+              let midY = points ? (points[0].y() + points[1].y()) / 2 - plugin.currentPosition[1] : 0
               // For debugging, show each segment's center & length
               logMsg("Pipe center => X:" + midX.toFixed(2) +
                      " Y:" + midY.toFixed(2) +
@@ -354,7 +362,7 @@ function initLayer() {
 
             // Rotate cylinder to line up with the segment
             rotation: {
-              let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
+              let angleDeg = points ? Math.atan2(dy, dx) * 180 / Math.PI : 0
               return Qt.quaternion.fromEulerAngles(0, 0, angleDeg)
             }
 
