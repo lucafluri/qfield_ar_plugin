@@ -33,32 +33,7 @@ Item {
   property double currentOrientation: 0
   property double currentTilt: 90
 
-  property var pipeFeatures: {
-    if (!testPipesLayer) {
-      return []
-    }
-    let featureArray = []
-    
-    // Get both features  
-    let feature0 = testPipesLayer.getFeature("0")
-    let feature1 = testPipesLayer.getFeature("1")
-    
-    if (feature0 && feature0.geometry) {
-      featureArray.push({
-        geometry: feature0.geometry,
-        id: feature0.id
-      })
-    }
-    
-    if (feature1 && feature1.geometry) {
-      featureArray.push({
-        geometry: feature1.geometry,
-        id: feature1.id
-      })
-    }
-    
-    return featureArray
-  }
+  property var pipeFeatures: []
 
   //----------------------------------
   // Helper for toast + text fallback
@@ -89,28 +64,73 @@ Item {
       return null
   }
 
-  
-Timer {
+  function loadPipeFeatures() {
+    //     if (!testPipesLayer) {
+    //   return []
+    // }
+    // let featureArray = []
+    
+    // // Get both features  
+    // let feature0 = testPipesLayer.getFeature("0")
+    // let feature1 = testPipesLayer.getFeature("1")
+    
+    // if (feature0 && feature0.geometry) {
+    //   featureArray.push({
+    //     geometry: feature0.geometry,
+    //     id: feature0.id
+    //   })
+    // }
+    
+    // if (feature1 && feature1.geometry) {
+    //   featureArray.push({
+    //     geometry: feature1.geometry,
+    //     id: feature1.id
+    //   })
+    // }
+    
+    // return featureArray
+
+    if (!testPipesLayer) {
+      console.error('test_pipes layer not found');
+      return;
+    }
+
+    let feature0 = testPipesLayer.getFeature("0");
+    if (!feature0 || !feature0.geometry) {
+      console.error('Feature 0 not found or has no geometry');
+      return;
+    }
+
+    pipeFeatures = [{
+      geometry: feature0.geometry,
+      id: feature0.id
+    }];
+  }
+
+  //----------------------------------
+  // On start: find the layer
+  //----------------------------------
+  Timer {
     id: timer
     interval: 1000
     repeat: true
     triggeredOnStart: true
     onTriggered: initLayer()
-}
+  }
 
-Connections {
+  Connections {
     target: iface.project
     function onProjectRead() {
         logMsg("Project fully loaded!")
         timer.stop()
         initLayer()
     }
-}
+  }
 
-property int initRetryCount: 0
-property int maxRetries: 10
+  property int initRetryCount: 0
+  property int maxRetries: 10
 
-function initLayer() {
+  function initLayer() {
     logMsg("=== initLayer() ===")
     testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
     logMsg("Pipe Layer: " + (testPipesLayer ? testPipesLayer.name : "not found")) 
@@ -123,44 +143,12 @@ function initLayer() {
     }
 
     return
-}
+  }
 
-  //----------------------------------
-  // On start: find the layer
-  //----------------------------------
   Component.onCompleted: {
-    iface.addItemToPluginsToolbar(pluginButton)
-    // timer.running = true // Start retry timer
-    
-    Qt.callLater(initLayer)
-    
-    // Find test pipes layer
-    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
-    
-    if (testPipesLayer) {
-      console.log('Loading', testPipesLayer.featureCount(), 'pipes from', testPipesLayer.name)
-      
-      try {
-        let features = []
-        const iterator = testPipesLayer.getFeatures()
-        while (iterator.hasNext()) {
-          const feature = iterator.next()
-          if (feature.hasGeometry()) {
-            features.push({
-              id: feature.id(),
-              geometry: feature.geometry(),
-              attributes: feature.attributesMap()
-            })
-          }
-        }
-        pipeFeatures = features
-        console.log('Successfully loaded', features.length, 'pipe features')
-      } catch (error) {
-        console.error('Error loading features:', error)
-      }
-    } else {
-      console.error('test_pipes layer not found in project')
-    }
+    iface.addItemToPluginsToolbar(pluginButton);
+    Qt.callLater(initLayer);
+    loadPipeFeatures();
   }
 
   //----------------------------------
@@ -332,18 +320,7 @@ function initLayer() {
           }
         }
 
-        // West-East pipe visualization
-        Model {
-            position: Qt.vector3d(0, 0, 0)  // Centered on user
-            rotation: Qt.quaternion(0, 0, 0, 1)  // No rotation needed for west-east
-            scale: Qt.vector3d(10, 0.2, 0.2)  // 10m long, 0.2m diameter
-            source: "#Cylinder"
-            materials: PrincipledMaterial {
-              baseColor: "red"
-              roughness: 0.3
-            }
-        }
-   
+       
         //----------------------------
         // 2) Repeater for pipe lines
         //----------------------------
@@ -405,34 +382,7 @@ function initLayer() {
           }
         }
 
-        //----------------------------
-        // 3) Fake pipe visualization
-        //----------------------------
-        Model {
-            // Calculate pipe properties
-            property real dx: fakePipeEnd[0] - fakePipeStart[0]
-            property real dy: fakePipeEnd[1] - fakePipeStart[1]
-            property real pipeLength: Math.sqrt(dx*dx + dy*dy)
-
-            position: {
-              let midX = (fakePipeStart[0] + fakePipeEnd[0]) / 2 - plugin.currentPosition[0]
-              let midY = (fakePipeStart[1] + fakePipeEnd[1]) / 2 - plugin.currentPosition[1]
-              return Qt.vector3d(midX, midY, 0)
-            }
-
-            rotation: {
-              let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
-              return Qt.quaternion(angleDeg, 0, 0, 1)
-            }
-
-            scale: Qt.vector3d(pipeLength, 0.2, 0.2)  // Made the pipe a bit thicker for visibility
-            source: "#Cylinder"
-            
-            materials: PrincipledMaterial {
-              baseColor: "red"  // Made it red to distinguish from other pipes
-              roughness: 0.3
-            }
-        }
+        
       }
     }
 
