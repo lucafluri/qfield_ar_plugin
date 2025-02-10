@@ -64,31 +64,6 @@ Item {
   }
 
   function loadPipeFeatures() {
-    //     if (!testPipesLayer) {
-    //   return []
-    // }
-    // let featureArray = []
-    
-    // // Get both features  
-    // let feature0 = testPipesLayer.getFeature("0")
-    // let feature1 = testPipesLayer.getFeature("1")
-    
-    // if (feature0 && feature0.geometry) {
-    //   featureArray.push({
-    //     geometry: feature0.geometry,
-    //     id: feature0.id
-    //   })
-    // }
-    
-    // if (feature1 && feature1.geometry) {
-    //   featureArray.push({
-    //     geometry: feature1.geometry,
-    //     id: feature1.id
-    //   })
-    // }
-    
-    // return featureArray
-
     if (!testPipesLayer) {
       console.error('test_pipes layer not found');
       return;
@@ -319,7 +294,43 @@ Item {
           }
         }
 
-       
+        //----------------------------
+        // 2) Repeater for pipe lines
+        //----------------------------
+        Repeater3D {
+          model: pipeFeatures
+
+          delegate: Model {
+            required property var geometry
+            required property var id
+
+            // Approximate pipe with a cylinder
+            property var startPoint: geometry.getPointN(0)
+            property var endPoint: geometry.getPointN(geometry.getNumPoints() - 1)
+            property var dx: endPoint.x() - startPoint.x()
+            property var dy: endPoint.y() - startPoint.y()
+            property var segmentLength: Math.sqrt(dx*dx + dy*dy)
+
+            position: {
+              let midX = (startPoint.x() + endPoint.x()) / 2 - plugin.currentPosition[0]
+              let midY = (startPoint.y() + endPoint.y()) / 2 - plugin.currentPosition[1]
+              return Qt.vector3d(midX, midY, 0)
+            }
+
+            rotation: {
+              let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
+              return Qt.quaternion.fromEulerAngles(0, 0, angleDeg)
+            }
+
+            scale: Qt.vector3d(0.2, 0.2, segmentLength)
+
+            source: "#Cylinder"
+            materials: PrincipledMaterial {
+              baseColor: "gray"
+              roughness: 0.3
+            }
+          }
+        }
       }
     }
 
@@ -405,8 +416,7 @@ Item {
               Qt.vector3d(0,1,0),
               0,
               Qt.vector3d(0,0,1),
-              -plugin.currentOrientation
-          )
+              -plugin.currentOrientation)
         }
 
         plugin.currentTilt = averageTilt
@@ -467,11 +477,4 @@ Item {
     }
   }
 
-  Connections {
-    target: testPipesLayer
-    onDataChanged: {
-      console.log('Layer data changed - refreshing 3D view')
-      Component.onCompleted()
-    }
-  }
 }
