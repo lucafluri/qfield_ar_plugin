@@ -103,22 +103,20 @@ property int maxRetries: 10
 
 function initLayer() {
     logMsg("=== initLayer() ===")
-    logMsg("projectUtils exists?" + (projectUtils ? "Yes" : "No"))
-    logMsg("mapLayers:" + (projectUtils && projectUtils.mapLayers()))
-
     let layers = projectUtils.mapLayers(qgisProject)
-    logMsg("Layers: " + layers) //Object
-    logMsg("Layer 0: " + qgisProject.mapLayersByName("test_pipes")[0]) //undefined
+    pipeLayer = qgisProject.mapLayersByName("test_pipes")[0]
+    logMsg("Layers: " + layers) 
+    logMsg("Pipe Layer: " + pipeLayer) 
 
-      // testPipesLayer = findLayerByName("test_pipes")
-      // logMsg("testPipesLayer: " + testPipesLayer)
-    
-    if (initRetryCount >= maxRetries) {
-        logMsg("Layer load timeout")
-        timer.stop()
-        return
+    let features = pipeLayer.getFeatures();
+    let featureArray = [];
+    let feature;
+    while ((feature = features.nextFeature())) {
+        featureArray.push("ID: " + feature.id + ", Geometry: " + feature.geometry.asPolyline());
     }
-    initRetryCount++
+    logMsg("Pipe Features: " + featureArray.join("; "));
+
+     
 
     // Keep retrying until we find what we need
     return
