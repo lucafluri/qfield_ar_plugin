@@ -118,13 +118,15 @@ Item {
       logMsg("Geometry 1: " + testPipesLayer.getFeature("1").geometry)
     }
 
+    loadPipeFeatures();
+
+
     return
   }
 
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton);
     Qt.callLater(initLayer);
-    loadPipeFeatures();
   }
 
   //----------------------------------
