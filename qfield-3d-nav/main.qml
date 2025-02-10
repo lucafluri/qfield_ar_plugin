@@ -37,17 +37,17 @@ Item {
       return []
     }
     let featureArray = []
-    let iterator = testPipesLayer.getFeatures()
-    let feature
-    while ((feature = iterator.nextFeature())) {
-      let geometry = feature.geometry
-      if (geometry) {
-        featureArray.push({
-          geometry: geometry,
-          id: feature.id
-        })
-      }
-    }
+    // let iterator = LayerUtils.createFeatureIteratorFromExpression(testPipesLayer, "")
+    // let feature
+    // while ((feature = iterator.next())) {
+    //   let geometry = feature.geometry
+    //   if (geometry) {
+    //     featureArray.push({
+    //       geometry: geometry,
+    //       id: feature.id
+    //     })
+    //   }
+    // }
     return featureArray
   }
 
@@ -110,7 +110,7 @@ function initLayer() {
         try {
             let iterator = LayerUtils.createFeatureIteratorFromExpression(testPipesLayer, "")
             while (iterator.hasNext()) {
-                let feature = iterator.next()
+                var feature = iterator.next()
                 logMsg("Found feature with ID: " + feature.id)
             }
         } catch (e) {
