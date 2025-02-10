@@ -104,11 +104,11 @@ property int maxRetries: 10
 function initLayer() {
     logMsg("=== initLayer() ===")
     let layers = projectUtils.mapLayers(qgisProject)
-    pipeLayer = qgisProject.mapLayersByName("test_pipes")[0]
+    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
     logMsg("Layers: " + layers) 
-    logMsg("Pipe Layer: " + pipeLayer) 
+    logMsg("Pipe Layer: " + testPipesLayer) 
 
-    let features = pipeLayer.getFeatures();
+    let features = testPipesLayer.getFeatures();
     let featureArray = [];
     let feature;
     while ((feature = features.nextFeature())) {
