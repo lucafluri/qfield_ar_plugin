@@ -13,7 +13,7 @@ jobs:
         with:
           files: qfield-3d-nav/
           dest: plugin.zip
-      - uses: actions/upload-artifact@v1.1
+      - uses: vimtor/action-zip@v1.2
         with:
           name: my-artifact
           path: ${{ github.workspace }}/result.zip
