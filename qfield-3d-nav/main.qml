@@ -325,8 +325,10 @@ function initLayer() {
             required property var geometry
             required property var id
 
+            var geoWrapper = QgsGeometryWrapper(geometry)
+
             // Calculate middle point
-            property var points: geometry.asPolyline()
+            property var points: geoWrapper.asPolyline()
             property real dx: points[1].x - points[0].x
             property real dy: points[1].y - points[0].y
             property real segmentLength: Math.sqrt(dx*dx + dy*dy)
