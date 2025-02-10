@@ -106,19 +106,18 @@ function initLayer() {
     testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
     logMsg("Pipe Layer: " + (testPipesLayer ? testPipesLayer.name : "not found")) 
 
-    if (testPipesLayer && testPipesLayer.isValid) {
+    if (testPipesLayer) {
         try {
-            let request = QgsFeatureRequest()
-            let iterator = testPipesLayer.getFeatures(request)
-            let feature
-            while (iterator.nextFeature(feature)) {
+            let iterator = LayerUtils.createFeatureIteratorFromExpression(testPipesLayer, "")
+            while (iterator.hasNext()) {
+                let feature = iterator.next()
                 logMsg("Found feature with ID: " + feature.id)
             }
         } catch (e) {
             logMsg("Error accessing features: " + e)
         }
     } else {
-        logMsg("Layer 'test_pipes' not found or invalid")
+        logMsg("Layer 'test_pipes' not found")
     }
 
     return
