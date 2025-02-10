@@ -314,7 +314,7 @@ function initLayer() {
               roughness: 0.3
             }
         }
-
+   
         //----------------------------
         // 2) Repeater for pipe lines
         //----------------------------
@@ -325,21 +325,26 @@ function initLayer() {
             required property var geometry
             required property var id 
 
-            // Wrap the geometry to access QGS and similar functions 
-            property var geomWrapper: QgsGeometryWrapper {
-              qgsGeometry: geometry
-              crs: testPipesLayer.crs
+            // Use LinePolygonShape to handle the geometry
+            property var lineShape: LinePolygonShape {
+              geometry: QgsGeometryWrapper {
+                qgsGeometry: geometry
+                crs: testPipesLayer.crs
+              }
+              mapSettings: iface.mapSettings
+              color: "blue"
+              lineWidth: 2
             }
 
-            // Calculate middle point
-            property var points: geomWrapper.asPolyline()
-            property real dx: points[1].x - points[0].x
-            property real dy: points[1].y - points[0].y
+            // Calculate middle point using the first polyline
+            property var points: lineShape.polylines[0]
+            property real dx: points[1].x() - points[0].x()
+            property real dy: points[1].y() - points[0].y()
             property real segmentLength: Math.sqrt(dx*dx + dy*dy)
 
             position: {
-              let midX = (points[0].x + points[1].x) / 2 - plugin.currentPosition[0]
-              let midY = (points[0].y + points[1].y) / 2 - plugin.currentPosition[1]
+              let midX = (points[0].x() + points[1].x()) / 2 - plugin.currentPosition[0]
+              let midY = (points[0].y() + points[1].y()) / 2 - plugin.currentPosition[1]
               // For debugging, show each segment's center & length
               logMsg("Pipe center => X:" + midX.toFixed(2) +
                      " Y:" + midY.toFixed(2) +
