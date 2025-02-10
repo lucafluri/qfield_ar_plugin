@@ -107,20 +107,8 @@ function initLayer() {
     logMsg("Pipe Layer: " + (testPipesLayer ? testPipesLayer.name : "not found")) 
 
     if (testPipesLayer) {
-        try {
-            let iterator = LayerUtils.createFeatureIteratorFromExpression(testPipesLayer, "")
-            logMsg("Iterator created: " + iterator)
-            logMsg("Has next: " + iterator.hasNext())
-            logMsg("Next: " + iterator.next())
-            while (iterator.hasNext()) {
-                var feature = iterator.next()
-                logMsg("Found feature with ID: " + feature.id)
-            }
-        } catch (e) {
-            logMsg("Error accessing features: " + e)
-        }
-    } else {
-        logMsg("Layer 'test_pipes' not found")
+      logMsg("Feature 0: " + testPipesLayer.getFeature("0"))
+      logMsg("Feature 1: " + testPipesLayer.getFeature("1"))
     }
 
     return
