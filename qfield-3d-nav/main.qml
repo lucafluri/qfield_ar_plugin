@@ -332,7 +332,7 @@ function initLayer() {
             }
 
             // Calculate middle point
-            property var points: geomWrapper.qgsGeometry.asPolyline()
+            property var points: geomWrapper.asPolyline()
             property real dx: points[1].x - points[0].x
             property real dy: points[1].y - points[0].y
             property real segmentLength: Math.sqrt(dx*dx + dy*dy)
