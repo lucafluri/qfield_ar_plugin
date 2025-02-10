@@ -6,7 +6,6 @@ import QtSensors
 
 import org.qfield
 import org.qgis
-import org.qgis.geometry 1.0
 import Theme
 
 Item {
