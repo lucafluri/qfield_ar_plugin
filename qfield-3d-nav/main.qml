@@ -106,7 +106,7 @@ function initLayer() {
     let layers = projectUtils.mapLayers(qgisProject)
     testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
     logMsg("Layers: " + layers) 
-    logMsg("Pipe Layer: " + testPipesLayer) 
+    logMsg("Test Pipe Layer: " + testPipesLayer) 
 
     let features = testPipesLayer.getFeatures();
     let featureArray = [];
