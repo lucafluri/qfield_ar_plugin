@@ -108,8 +108,8 @@ function initLayer() {
     logMsg("Layers: " + layers) 
     logMsg("Test Pipe Layer: " + testPipesLayer) 
 
-    var FeatureIterator = layerUtils.FeatureIterator(testPipesLayer)
-    for (var feature in FeatureIterator) {
+    var fi = FeatureIterator(testPipesLayer)
+    for (var feature in fi) {
         logMsg("Feature: " + feature)
     }
 
