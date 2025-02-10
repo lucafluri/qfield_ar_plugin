@@ -37,17 +37,25 @@ Item {
       return []
     }
     let featureArray = []
-    // let iterator = LayerUtils.createFeatureIteratorFromExpression(testPipesLayer, "")
-    // let feature
-    // while ((feature = iterator.next())) {
-    //   let geometry = feature.geometry
-    //   if (geometry) {
-    //     featureArray.push({
-    //       geometry: geometry,
-    //       id: feature.id
-    //     })
-    //   }
-    // }
+    
+    // Get both features
+    let feature0 = testPipesLayer.getFeature("0")
+    let feature1 = testPipesLayer.getFeature("1")
+    
+    if (feature0 && feature0.geometry) {
+      featureArray.push({
+        geometry: feature0.geometry,
+        id: feature0.id
+      })
+    }
+    
+    if (feature1 && feature1.geometry) {
+      featureArray.push({
+        geometry: feature1.geometry,
+        id: feature1.id
+      })
+    }
+    
     return featureArray
   }
 
