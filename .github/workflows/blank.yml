@@ -1,19 +1,35 @@
-name: Zip 
+name: Zip Folder and Push
 
 on:
   push:
-    
+    branches:
+      - main
 
 jobs:
-  zip-files:
+  zip_and_push:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: vimtor/action-zip@v1.2
+      - name: Checkout repository
+        uses: actions/checkout@v3
         with:
-          files: qfield-3d-nav/
-          dest: plugin.zip
-      - uses: vimtor/action-zip@v1.2
-        with:
-          name: my-artifact
-          path: ${{ github.workspace }}/result.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Fetch the full history so we can push commits
+
+      - name: Zip qfield-3d-nav folder
+        run: |
+          zip -r qfield-3d-nav.zip qfield-3d-nav/
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Commit and push zip file
+        run: |
+          git add qfield-3d-nav.zip
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Add zipped folder qfield-3d-nav.zip [skip ci]"
+            git push origin HEAD:main
+          fi
