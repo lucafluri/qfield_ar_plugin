@@ -103,19 +103,24 @@ property int maxRetries: 10
 
 function initLayer() {
     logMsg("=== initLayer() ===")
-    let layers = projectUtils.mapLayers(qgisProject)
     testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
-    logMsg("Layers: " + layers) 
-    logMsg("Pipe Layer: " + testPipesLayer) 
+    logMsg("Pipe Layer: " + (testPipesLayer ? testPipesLayer.name : "not found")) 
 
-    var fi = LayerUtils.FeatureIterator(testPipesLayer)
-    for (var feature in fi) {
-        logMsg("Feature: " + feature)
+    if (testPipesLayer && testPipesLayer.isValid) {
+        try {
+            let request = QgsFeatureRequest()
+            let iterator = testPipesLayer.getFeatures(request)
+            let feature
+            while (iterator.nextFeature(feature)) {
+                logMsg("Found feature with ID: " + feature.id)
+            }
+        } catch (e) {
+            logMsg("Error accessing features: " + e)
+        }
+    } else {
+        logMsg("Layer 'test_pipes' not found or invalid")
     }
 
-     
-
-    // Keep retrying until we find what we need
     return
 }
 
