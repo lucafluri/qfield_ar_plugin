@@ -1,0 +1,28 @@
+name: Zip Folder and Commit ZIP
+
+on: [push, workflow_dispatch]
+
+permissions:
+  contents: write
+
+jobs:
+  zip_and_commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Delete old zip file
+        run: rm -f qfield-3d-nav.zip
+
+      - name: Zip the qfield-3d-nav folder
+        run: |
+          zip -r qfield-3d-nav.zip qfield-3d-nav/
+          
+      - name: Commit and Push ZIP File
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Commit zipped folder qfield-3d-nav.zip [skip ci]"
+          add: 'qfield-3d-nav.zip'
+      
+
