@@ -321,68 +321,6 @@ Item {
         }
 
        
-        //----------------------------
-        // 2) Repeater for pipe lines
-        //----------------------------
-        Repeater3D {
-          model: pipeFeatures
-
-          delegate: Model {
-            required property var geometry
-            required property var id 
-
-            // Use LinePolygonShape to handle the geometry
-            property var lineShape: {
-              try {
-                return LinePolygonShape {
-                  geometry: QgsGeometryWrapper {
-                    qgsGeometry: geometry
-                    crs: testPipesLayer.crs
-                  }
-                  mapSettings: iface.mapCanvas().mapSettings
-                  color: id === '0' ? 'red' : 'orange'
-                  lineWidth: 3
-                }
-              } catch (e) {
-                console.error("Error creating LinePolygonShape:", e)
-                return null
-              }
-            }
-
-            // Calculate middle point using the first polyline
-            property var points: lineShape ? lineShape.polylines[0] : null
-            property real dx: points ? points[1].x() - points[0].x() : 0
-            property real dy: points ? points[1].y() - points[0].y() : 0
-            property real segmentLength: points ? Math.sqrt(dx*dx + dy*dy) : 0
-
-            position: {
-              let midX = points ? (points[0].x() + points[1].x()) / 2 - plugin.currentPosition[0] : 0
-              let midY = points ? (points[0].y() + points[1].y()) / 2 - plugin.currentPosition[1] : 0
-              // For debugging, show each segment's center & length
-              logMsg("Pipe center => X:" + midX.toFixed(2) +
-                     " Y:" + midY.toFixed(2) +
-                     " Len:" + segmentLength.toFixed(2))
-              return Qt.vector3d(midX, midY, 0)
-            }
-
-            // Rotate cylinder to line up with the segment
-            rotation: {
-              let angleDeg = points ? Math.atan2(dy, dx) * 180 / Math.PI : 0
-              return Qt.quaternion.fromEulerAngles(0, 0, angleDeg)
-            }
-
-            // Scale: length in x-direction, small radius in y/z
-            scale: Qt.vector3d(0.2, 0.2, segmentLength)
-
-            source: "#Cylinder"
-            materials: PrincipledMaterial {
-              baseColor: "gray"
-              roughness: 0.3
-            }
-          }
-        }
-
-        
       }
     }
 
