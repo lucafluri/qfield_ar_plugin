@@ -108,7 +108,9 @@ function initLayer() {
 
     if (testPipesLayer) {
       logMsg("Feature 0: " + testPipesLayer.getFeature("0"))
+      logMsg("Geometry 0: " + testPipesLayer.getFeature("0").geometry)
       logMsg("Feature 1: " + testPipesLayer.getFeature("1"))
+      logMsg("Geometry 1: " + testPipesLayer.getFeature("1").geometry)
     }
 
     return
