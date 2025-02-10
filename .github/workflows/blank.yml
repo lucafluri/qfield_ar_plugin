@@ -1,4 +1,4 @@
-name: Zip Folder and Commit ZIP
+name: Zip Folder Contents and Commit ZIP
 
 on: [push, workflow_dispatch]
 
@@ -15,14 +15,15 @@ jobs:
       - name: Delete old zip file
         run: rm -f qfield-3d-nav.zip
 
-      - name: Zip the qfield-3d-nav folder
+      - name: Zip the contents of qfield-3d-nav folder
         run: |
-          zip -r qfield-3d-nav.zip qfield-3d-nav/
+          cd qfield-3d-nav
+          # Zip all contents (including hidden files) into the ZIP at the repo root.
+          zip -r ../qfield-3d-nav.zip .
           
       - name: Commit and Push ZIP File
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: "Commit zipped folder qfield-3d-nav.zip [skip ci]"
+          commit_message: "Commit zipped folder contents (qfield-3d-nav.zip) [skip ci]"
           add: 'qfield-3d-nav.zip'
       
-
