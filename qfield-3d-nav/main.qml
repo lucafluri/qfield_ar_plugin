@@ -326,14 +326,15 @@ function initLayer() {
             required property var id
 
             // Calculate middle point
-            property real dx: geometry.asPolyline()[1].x - geometry.asPolyline()[0].x
-            property real dy: geometry.asPolyline()[1].y - geometry.asPolyline()[0].y
+            property var points: geometry.asMultiPolyline()[0]
+            property real dx: points[1].x - points[0].x
+            property real dy: points[1].y - points[0].y
             property real segmentLength: Math.sqrt(dx*dx + dy*dy)
 
             position: {
-              let midX = (geometry.asPolyline()[0].x + geometry.asPolyline()[1].x) / 2 - plugin.currentPosition[0]
-              let midY = (geometry.asPolyline()[0].y + geometry.asPolyline()[1].y) / 2 - plugin.currentPosition[1]
-              // For debugging, show each segment’s center & length
+              let midX = (points[0].x + points[1].x) / 2 - plugin.currentPosition[0]
+              let midY = (points[0].y + points[1].y) / 2 - plugin.currentPosition[1]
+              // For debugging, show each segment's center & length
               logMsg("Pipe center => X:" + midX.toFixed(2) +
                      " Y:" + midY.toFixed(2) +
                      " Len:" + segmentLength.toFixed(2))
