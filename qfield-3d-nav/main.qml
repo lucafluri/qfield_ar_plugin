@@ -133,6 +133,34 @@ function initLayer() {
     // timer.running = true // Start retry timer
     
     Qt.callLater(initLayer)
+    
+    // Find test pipes layer
+    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
+    
+    if (testPipesLayer) {
+      console.log('Loading', testPipesLayer.featureCount(), 'pipes from', testPipesLayer.name)
+      
+      try {
+        let features = []
+        const iterator = testPipesLayer.getFeatures()
+        while (iterator.hasNext()) {
+          const feature = iterator.next()
+          if (feature.hasGeometry()) {
+            features.push({
+              id: feature.id(),
+              geometry: feature.geometry(),
+              attributes: feature.attributesMap()
+            })
+          }
+        }
+        pipeFeatures = features
+        console.log('Successfully loaded', features.length, 'pipe features')
+      } catch (error) {
+        console.error('Error loading features:', error)
+      }
+    } else {
+      console.error('test_pipes layer not found in project')
+    }
   }
 
   //----------------------------------
@@ -331,12 +359,12 @@ function initLayer() {
               try {
                 return LinePolygonShape {
                   geometry: QgsGeometryWrapper {
-                    qgsGeometry: geometry || null
-                    crs: testPipesLayer ? testPipesLayer.crs : null
+                    qgsGeometry: geometry
+                    crs: testPipesLayer.crs
                   }
-                  mapSettings: iface && iface.mapCanvas() ? iface.mapCanvas().mapSettings : null
-                  color: "blue"
-                  lineWidth: 2
+                  mapSettings: iface.mapCanvas().mapSettings
+                  color: id === '0' ? 'red' : 'orange'
+                  lineWidth: 3
                 }
               } catch (e) {
                 console.error("Error creating LinePolygonShape:", e)
@@ -367,11 +395,11 @@ function initLayer() {
             }
 
             // Scale: length in x-direction, small radius in y/z
-            scale: Qt.vector3d(segmentLength, 0.002, 0.002)
+            scale: Qt.vector3d(0.2, 0.2, segmentLength)
 
             source: "#Cylinder"
             materials: PrincipledMaterial {
-              baseColor: "blue"
+              baseColor: "gray"
               roughness: 0.3
             }
           }
@@ -549,6 +577,14 @@ function initLayer() {
             'current orientation: ' + plugin.currentOrientation +
             '\ncurrent tilt: ' + plugin.currentTilt
       }
+    }
+  }
+
+  Connections {
+    target: testPipesLayer
+    onDataChanged: {
+      console.log('Layer data changed - refreshing 3D view')
+      Component.onCompleted()
     }
   }
 }
