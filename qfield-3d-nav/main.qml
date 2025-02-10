@@ -106,7 +106,7 @@ function initLayer() {
     let layers = projectUtils.mapLayers(qgisProject)
     testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
     logMsg("Layers: " + layers) 
-    logMsg("Test Pipe Layer: " + testPipesLayer) 
+    logMsg("Pipe Layer: " + testPipesLayer) 
 
     var fi = LayerUtils.FeatureIterator(testPipesLayer)
     for (var feature in fi) {
