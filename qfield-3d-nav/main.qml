@@ -108,13 +108,10 @@ function initLayer() {
     logMsg("Layers: " + layers) 
     logMsg("Test Pipe Layer: " + testPipesLayer) 
 
-    let features = testPipesLayer.getFeatures();
-    let featureArray = [];
-    let feature;
-    while ((feature = features.nextFeature())) {
-        featureArray.push("ID: " + feature.id + ", Geometry: " + feature.geometry.asPolyline());
+    var FeatureIterator = layerUtils.FeatureIterator(testPipesLayer)
+    for (var feature in FeatureIterator) {
+        logMsg("Feature: " + feature)
     }
-    logMsg("Pipe Features: " + featureArray.join("; "));
 
      
 
