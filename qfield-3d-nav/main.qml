@@ -105,14 +105,10 @@ function initLayer() {
     logMsg("=== initLayer() ===")
     logMsg("projectUtils exists?" + (projectUtils ? "Yes" : "No"))
     logMsg("mapLayers:" + (projectUtils && projectUtils.mapLayers()))
-    // logMsg("iface exists? " + (iface ? "Yes" : "No"))
-    // logMsg("iface.mapCanvas exists? " + (iface && iface.mapCanvas() ? "Yes" : "No"))
 
-    let layers = projectUtils.mapLayers()
-    logMsg("Layers: " + layers)
-    logMsg("Layer 0: " + layers["test_pipes"])
-    logMsg("Layer 1: " + layers["test_pipes_7c949ab3_406c_4607_b59c_36bf19fd1a19"])
-     
+    let layers = projectUtils.mapLayers(qgisProject)
+    logMsg("Layers: " + layers) //Object
+    logMsg("Layer 0: " + qgisProject.mapLayersByName("test_pipes")[0]) //undefined
 
       // testPipesLayer = findLayerByName("test_pipes")
       // logMsg("testPipesLayer: " + testPipesLayer)
