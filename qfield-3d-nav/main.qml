@@ -38,7 +38,7 @@ Item {
     }
     let featureArray = []
     
-    // Get both features
+    // Get both features 
     let feature0 = testPipesLayer.getFeature("0")
     let feature1 = testPipesLayer.getFeature("1")
     
