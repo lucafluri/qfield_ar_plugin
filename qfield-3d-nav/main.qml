@@ -323,7 +323,7 @@ function initLayer() {
 
           delegate: Model {
             required property var geometry
-            required property var id
+            required property var id 
 
             // Wrap the geometry to access QGS functions
             property var geomWrapper: QgsGeometryWrapper {
