@@ -19,7 +19,7 @@ jobs:
         run: |
           cd qfield-3d-nav
           # Zip all contents (including hidden files) into the ZIP at the repo root.
-          zip -r ../qfield-3d-nav.zip ./*
+          zip -r ../qfield-3d-nav.zip *
           
       - name: Commit and Push ZIP File
         uses: stefanzweifel/git-auto-commit-action@v4
