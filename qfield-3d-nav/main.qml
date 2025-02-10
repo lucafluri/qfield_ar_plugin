@@ -79,6 +79,8 @@ Item {
       geometry: feature0.geometry,
       id: feature0.id
     }];
+
+    logMsg('Loaded ' + pipeFeatures.length + ' pipe features')
   }
 
   //----------------------------------
