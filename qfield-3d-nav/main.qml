@@ -110,6 +110,8 @@ function initLayer() {
         try {
             let iterator = LayerUtils.createFeatureIteratorFromExpression(testPipesLayer, "")
             logMsg("Iterator created: " + iterator)
+            logMsg("Has next: " + iterator.hasNext())
+            logMsg("Next: " + iterator.next())
             while (iterator.hasNext()) {
                 var feature = iterator.next()
                 logMsg("Found feature with ID: " + feature.id)
