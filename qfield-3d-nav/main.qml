@@ -325,7 +325,7 @@ function initLayer() {
             required property var geometry
             required property var id 
 
-            // Wrap the geometry to access QGS functions
+            // Wrap the geometry to access QGS and similar functions 
             property var geomWrapper: QgsGeometryWrapper {
               qgsGeometry: geometry
               crs: testPipesLayer.crs
