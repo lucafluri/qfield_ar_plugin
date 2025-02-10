@@ -331,7 +331,7 @@ function initLayer() {
                 qgsGeometry: geometry
                 crs: testPipesLayer.crs
               }
-              mapSettings: qgisProject.mapSettings
+              mapSettings: iface.mapCanvas.mapSettings()
               color: "blue"
               lineWidth: 2
             }
