@@ -75,9 +75,18 @@ Item {
       return;
     }
 
+    let feature1 = testPipesLayer.getFeature("1");
+    if (!feature1 || !feature1.geometry) {
+      console.error('Feature 1 not found or has no geometry');
+      return;
+    }
+
     pipeFeatures = [{
       geometry: feature0.geometry,
       id: feature0.id
+    }, {
+      geometry: feature1.geometry,
+      id: feature1.id
     }];
 
     logMsg('Loaded ' + pipeFeatures.length + ' pipe features')
@@ -309,8 +318,8 @@ Item {
             required property var id
 
             // Approximate pipe with a cylinder
-            property var startPoint: geometry.getPointN(0)
-            property var endPoint: geometry.getPointN(geometry.getNumPoints() - 1)
+            property var startPoint: geometry.vertices()[0]
+            property var endPoint: geometry.vertices()[geometry.vertices().length - 1]
             property var dx: endPoint.x() - startPoint.x()
             property var dy: endPoint.y() - startPoint.y()
             property var segmentLength: Math.sqrt(dx*dx + dy*dy)
