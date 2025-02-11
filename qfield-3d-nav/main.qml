@@ -337,8 +337,10 @@ Item {
             }
 
             rotation: {
-              let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
-              return Qt.quaternion(0, 0, angleDeg)
+              let angleRad = Math.atan2(dy, dx)
+              let qZ = Math.sin(angleRad / 2)
+              let qW = Math.cos(angleRad / 2)
+              return Qt.quaternion(qW, 0, 0, qZ)
             }
 
             scale: Qt.vector3d(0.2, 0.2, segmentLength)
