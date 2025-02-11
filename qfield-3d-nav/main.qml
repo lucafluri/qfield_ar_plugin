@@ -322,19 +322,23 @@ Item {
             property var pointList: geometryWrapper.pointList()
             property var startPoint: pointList[0]
             property var endPoint: pointList[pointList.length - 1]
-            property var dx: endPoint.x() - startPoint.x()
-            property var dy: endPoint.y() - startPoint.y()
+            property var startPointX: startPoint ? startPoint.property('x') : 0
+            property var startPointY: startPoint ? startPoint.property('y') : 0
+            property var endPointX: endPoint ? endPoint.property('x') : 0
+            property var endPointY: endPoint ? endPoint.property('y') : 0
+            property var dx: endPoint ? endPointX - startPointX : 0
+            property var dy: endPoint ? endPointY - startPointY : 0
             property var segmentLength: Math.sqrt(dx*dx + dy*dy)
 
             position: {
-              let midX = (startPoint.x() + endPoint.x()) / 2 - plugin.currentPosition[0]
-              let midY = (startPoint.y() + endPoint.y()) / 2 - plugin.currentPosition[1]
+              let midX = (startPointX + endPointX) / 2 - plugin.currentPosition[0]
+              let midY = (startPointY + endPointY) / 2 - plugin.currentPosition[1]
               return Qt.vector3d(midX, midY, 0)
             }
 
             rotation: {
               let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
-              return Qt.quaternion.fromEulerAngles(0, 0, angleDeg)
+              return Qt.quaternion(0, 0, angleDeg)
             }
 
             scale: Qt.vector3d(0.2, 0.2, segmentLength)
