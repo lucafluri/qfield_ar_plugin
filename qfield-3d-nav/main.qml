@@ -318,8 +318,10 @@ Item {
             required property var id
 
             // Approximate pipe with a cylinder
-            property var startPoint: geometry.vertices()[0]
-            property var endPoint: geometry.vertices()[geometry.vertices().length - 1]
+            property var geometryWrapper: QgsGeometryWrapper { qgsGeometry: geometry; crs: testPipesLayer.crs }
+            property var pointList: geometryWrapper.pointList()
+            property var startPoint: pointList[0]
+            property var endPoint: pointList[pointList.length - 1]
             property var dx: endPoint.x() - startPoint.x()
             property var dy: endPoint.y() - startPoint.y()
             property var segmentLength: Math.sqrt(dx*dx + dy*dy)
