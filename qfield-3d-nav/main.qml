@@ -94,6 +94,18 @@ Item {
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton);
     Qt.callLater(initLayer);
+
+    // Add a fake pipe for debugging
+    pipeFeatures.push({
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [plugin.currentPosition[0], plugin.currentPosition[1] + 10],
+          [plugin.currentPosition[0], plugin.currentPosition[1] + 20]
+        ]
+      },
+      id: "fakePipe"
+    });
   }
 
   //----------------------------------
