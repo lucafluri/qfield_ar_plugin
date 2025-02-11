@@ -45,24 +45,6 @@ Item {
     pipe_text += "\n" + msg
   }
 
-  function getAllLayers() {
-        // If no project is specified, it uses the current project
-        let layers = ProjectUtils.mapLayers()
-        return layers
-    }
-
-  // Function to find specific layer by name
-  function findLayerByName(layerName) {
-      let layers = getAllLayers()
-      for (let layerId in layers) {
-          let layer = layers[layerId]
-          if (layer.name === layerName) {
-              return layer
-          }
-      }
-      return null
-  }
-
   function loadPipeFeatures() {
     if (!testPipesLayer) {
       console.error('test_pipes layer not found');
@@ -92,29 +74,6 @@ Item {
     logMsg('Loaded ' + pipeFeatures.length + ' pipe features')
   }
 
-  //----------------------------------
-  // On start: find the layer
-  //----------------------------------
-  Timer {
-    id: timer
-    interval: 1000
-    repeat: true
-    triggeredOnStart: true
-    onTriggered: initLayer()
-  }
-
-  Connections {
-    target: iface.project
-    function onProjectRead() {
-        logMsg("Project fully loaded!")
-        timer.stop()
-        initLayer()
-    }
-  }
-
-  property int initRetryCount: 0
-  property int maxRetries: 10
-
   function initLayer() {
     logMsg("=== initLayer() ===")
     testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
@@ -128,7 +87,6 @@ Item {
     }
 
     loadPipeFeatures();
-
 
     return
   }
