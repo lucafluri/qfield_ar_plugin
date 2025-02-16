@@ -259,13 +259,63 @@ Item {
           model: plugin.points
 
           delegate: Model {
-            position: Qt.vector3d(
-                          modelData[0] - plugin.currentPosition[0],
-                          modelData[1] - plugin.currentPosition[1],
-                          modelData[2])
-            source: "#Sphere"
-            scale: Qt.vector3d(0.005, 0.005, 0.005)
+            position: Qt.vector3d(modelData[0] - plugin.currentPosition[0], modelData[1] - plugin.currentPosition[1], modelData[2])
+            geometry: ProceduralMesh {
+              property real segments: 10
+              property real tubeRadius: 0.1
+              property var meshArrays: generateTube(segments, tubeRadius)
 
+              positions: meshArrays.verts
+              normals: meshArrays.normals
+              indexes: meshArrays.indices
+
+              function generateTube(segments: real, tubeRadius: real) {
+                let verts = []
+                let normals = []
+                let indices = []
+                let uvs = [] // not used here
+
+                // Line geometry's XYZ position relative to its centroid
+                let pos = [[0,0,0],[0,3,0],[-3,3,0],[-3,2,0]];
+
+                for (let i = 0; i < pos.length; ++i) {
+                  for (let j = 0; j <= segments; ++j) {
+                    let v = j / segments * Math.PI * 2;
+
+                    let centerX = pos[i][0];
+                    let centerY = pos[i][1];
+                    let centerZ = pos[i][2];
+
+                    let posX = centerX + tubeRadius * Math.sin(v);
+                    let posY = centerY + tubeRadius * Math.cos(v);
+                    let posZ = centerZ + tubeRadius * Math.cos(v);
+
+                    verts.push(Qt.vector3d(posX, posY, posZ));
+
+                    let normal = Qt.vector3d(posX - centerX, posY - centerY, posZ - centerZ).normalized();
+                    normals.push(normal);
+
+                    uvs.push(Qt.vector2d(i / pos.length, j / segments));
+                  }
+                }
+
+                for (let i = 0; i < pos.length - 1; ++i) {
+                  for (let j = 0; j < segments; ++j) {
+                    let a = (segments + 1) * i + j;
+                    let b = (segments + 1) * (i + 1) + j;
+                    let c = (segments + 1) * (i + 1) + j + 1;
+                    let d = (segments + 1) * i + j + 1;
+
+                    // Generate two triangles for each quad in the mesh
+                    // Adjust order to be counter-clockwise
+                    indices.push(a, d, b);
+                    indices.push(b, d, c);
+                  }
+                }
+
+                return { verts: verts, normals: normals, uvs: uvs, indices: indices }
+              }
+            }
             materials: PrincipledMaterial {
               baseColor: index == 0
                          ? Theme.accuracyTolerated
