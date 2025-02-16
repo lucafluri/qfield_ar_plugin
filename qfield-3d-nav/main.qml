@@ -259,63 +259,13 @@ Item {
           model: plugin.points
 
           delegate: Model {
-            position: Qt.vector3d(modelData[0] - plugin.currentPosition[0], modelData[1] - plugin.currentPosition[1], modelData[2])
-            geometry: ProceduralMesh {
-              property real segments: 10
-              property real tubeRadius: 0.1
-              property var meshArrays: generateTube(segments, tubeRadius)
+            position: Qt.vector3d(
+                          modelData[0] - plugin.currentPosition[0],
+                          modelData[1] - plugin.currentPosition[1],
+                          modelData[2])
+            source: "#Sphere"
+            scale: Qt.vector3d(0.005, 0.005, 0.005)
 
-              positions: meshArrays.verts
-              normals: meshArrays.normals
-              indexes: meshArrays.indices
-
-              function generateTube(segments: real, tubeRadius: real) {
-                let verts = []
-                let normals = []
-                let indices = []
-                let uvs = [] // not used here
-
-                // Line geometry's XYZ position relative to its centroid
-                let pos = [[0,0,0],[0,3,0],[-3,3,0],[-3,2,0]];
-
-                for (let i = 0; i < pos.length; ++i) {
-                  for (let j = 0; j <= segments; ++j) {
-                    let v = j / segments * Math.PI * 2;
-
-                    let centerX = pos[i][0];
-                    let centerY = pos[i][1];
-                    let centerZ = pos[i][2];
-
-                    let posX = centerX + tubeRadius * Math.sin(v);
-                    let posY = centerY + tubeRadius * Math.cos(v);
-                    let posZ = centerZ + tubeRadius * Math.cos(v);
-
-                    verts.push(Qt.vector3d(posX, posY, posZ));
-
-                    let normal = Qt.vector3d(posX - centerX, posY - centerY, posZ - centerZ).normalized();
-                    normals.push(normal);
-
-                    uvs.push(Qt.vector2d(i / pos.length, j / segments));
-                  }
-                }
-
-                for (let i = 0; i < pos.length - 1; ++i) {
-                  for (let j = 0; j < segments; ++j) {
-                    let a = (segments + 1) * i + j;
-                    let b = (segments + 1) * (i + 1) + j;
-                    let c = (segments + 1) * (i + 1) + j + 1;
-                    let d = (segments + 1) * i + j + 1;
-
-                    // Generate two triangles for each quad in the mesh
-                    // Adjust order to be counter-clockwise
-                    indices.push(a, d, b);
-                    indices.push(b, d, c);
-                  }
-                }
-
-                return { verts: verts, normals: normals, uvs: uvs, indices: indices }
-              }
-            }
             materials: PrincipledMaterial {
               baseColor: index == 0
                          ? Theme.accuracyTolerated
@@ -350,25 +300,74 @@ Item {
             property var dy: endPoint ? endPointY - startPointY : 0
             property var segmentLength: Math.sqrt(dx*dx + dy*dy)
 
-            position: {
-              let midX = (startPointX + endPointX) / 2 - plugin.currentPosition[0]
-              let midY = (startPointY + endPointY) / 2 - plugin.currentPosition[1]
-              return Qt.vector3d(midX, midY, 0)
+            position: Qt.vector3d(startPointX - plugin.currentPosition[0], 
+                                startPointY - plugin.currentPosition[1], 
+                                0)
+            source: ProceduralMesh {
+              property real segments: 10
+              property real tubeRadius: 0.1
+              property var meshArrays: generateube(segments, tubeRadius)
+
+              positions: meshArrays.verts
+              normals: meshArrays.normals
+              indexes: meshArrays.indices
+
+              function generateTube(segments: real, tubeRadius: real) {
+                let verts = []
+                let normals = []
+                let indices = []
+                let uvs = []
+
+                // Use the actual pipe geometry points
+                let pos = []
+                for (let i = 0; i < pointList.length; i++) {
+                  pos.push([
+                    pointList[i].property('x') - startPointX,
+                    pointList[i].property('y') - startPointY,
+                    0
+                  ])
+                
+
+                for (let i = 0; i < pos.length; ++i) {
+                  for (let j = 0; j <= segments; ++j) {
+                    let v = j / segments * Math.PI * 2
+
+                    let centerX = pos[i][0]
+                    let centerY = pos[i][1]
+                    let centerZ = pos[i][2]
+
+                    let posX = centerX + tubeRadius * Math.sin(v)
+                    let posY = centerY + tubeRadius * Math.cos(v)
+                    let posZ = centerZ + tubeRadius * Math.cos(v)
+
+                    verts.push(Qt.vector3d(posX, posY, posZ))
+
+                    let normal = Qt.vector3d(posX - centerX, posY - centerY, posZ - centerZ).normalized()
+                    normals.push(normal)
+
+                    uvs.push(Qt.vector2d(i / pos.length, j / segments))
+                  }
+                }
+
+                for (let i = 0; i < pos.length - 1; ++i) {
+                  for (let j = 0; j < segments; ++j) {
+                    let a = (segments + 1) * i + j
+                    let b = (segments + 1) * (i + 1) + j
+                    let c = (segments + 1) * (i + 1) + j + 1
+                    let d = (segments + 1) * i + j + 1
+
+                    indices.push(a, d, b)
+                    indices.push(b, d, c)
+                  }
+                }
+
+                return { verts: verts, normals: normals, uvs: uvs, indices: indices }
+              }
             }
 
-            rotation: {
-              let angleRad = Math.atan2(dy, dx)
-              let qZ = Math.sin(angleRad / 2)
-              let qW = Math.cos(angleRad / 2)
-              return Qt.quaternion(qW, 0, 0, qZ)
-            }
-
-            scale: Qt.vector3d(0.2, 0.2, segmentLength)
-
-            source: "#Cylinder"
             materials: PrincipledMaterial {
-              baseColor: "gray"
-              roughness: 0.3
+              baseColor: Theme.mainColor
+              roughness: 0.5
             }
           }
         }
