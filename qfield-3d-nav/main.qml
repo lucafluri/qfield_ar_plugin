@@ -304,7 +304,7 @@ Item {
             position: Qt.vector3d(startPointX - plugin.currentPosition[0], 
                                 startPointY - plugin.currentPosition[1], 
                                 0)
-            source: ProceduralMesh {
+            geometry: ProceduralMesh {
               property real segments: 10
               property real tubeRadius: 0.1
               property var meshArrays: generateTube(segments, tubeRadius)
