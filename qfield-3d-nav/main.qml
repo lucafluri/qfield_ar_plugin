@@ -306,7 +306,7 @@ Item {
             source: ProceduralMesh {
               property real segments: 10
               property real tubeRadius: 0.1
-              property var meshArrays: generateube(segments, tubeRadius)
+              property var meshArrays: generateTube(segments, tubeRadius)
 
               positions: meshArrays.verts
               normals: meshArrays.normals
@@ -326,7 +326,7 @@ Item {
                     pointList[i].property('y') - startPointY,
                     0
                   ])
-                
+                }
 
                 for (let i = 0; i < pos.length; ++i) {
                   for (let j = 0; j <= segments; ++j) {
