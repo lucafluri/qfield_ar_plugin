@@ -285,11 +285,11 @@ Item {
           model: pipeFeatures
 
           delegate: Model {
-            required property var geometry2
+            required property var geometry
             required property var id
 
             // Approximate pipe with a cylinder
-            property var geometryWrapper: QgsGeometryWrapper { qgsGeometry: geometry; crs: testPipesLayer.crs }
+            property var geometryWrapper: QgsGeometryWrapper { qgsGeometry: testPipesLayer.getFeature("0").geometry; crs: testPipesLayer.crs }
             property var pointList: geometryWrapper.pointList()
             property var startPoint: pointList[0]
             property var endPoint: pointList[pointList.length - 1]
@@ -304,7 +304,7 @@ Item {
             position: Qt.vector3d(startPointX - plugin.currentPosition[0], 
                                 startPointY - plugin.currentPosition[1], 
                                 0)
-            geometry2: ProceduralMesh {
+            geometry: ProceduralMesh {
               property real segments: 10
               property real tubeRadius: 0.1
               property var meshArrays: generateTube(segments, tubeRadius)
