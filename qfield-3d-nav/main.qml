@@ -289,7 +289,7 @@ Item {
             required property var id
 
             // Approximate pipe with a cylinder
-            property var geometryWrapper: QgsGeometryWrapper { qgsGeometry: geometry; crs: testPipesLayer.crs }
+            property var geometryWrapper: QgsGeometryWrapper { qgsGeometry: QgsGeometry.fromWkb(geometry.toWkb()); crs: testPipesLayer.crs }
             property var pointList: geometryWrapper.pointList()
             property var startPoint: pointList[0]
             property var endPoint: pointList[pointList.length - 1]
