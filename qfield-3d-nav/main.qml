@@ -275,21 +275,38 @@ Item {
 
               let startX = plugin.fakePipeStart[0] - plugin.currentPosition[0]
               let startY = plugin.fakePipeStart[1] - plugin.currentPosition[1]
+              let startZ = plugin.fakePipeStart[2] || 0  // Default to 0 if undefined
               let endX = plugin.fakePipeEnd[0] - plugin.currentPosition[0]
               let endY = plugin.fakePipeEnd[1] - plugin.currentPosition[1]
+              let endZ = plugin.fakePipeEnd[2] || 0  // Default to 0 if undefined
 
               for (let i = 0; i <= segments; ++i) {
                 let t = i / segments
                 let x = startX + t * (endX - startX)
                 let y = startY + t * (endY - startY)
+                let z = startZ + t * (endZ - startZ)
 
                 for (let j = 0; j <= segments; ++j) {
                   let angle = j / segments * Math.PI * 2
                   let dx = radius * Math.cos(angle)
                   let dy = radius * Math.sin(angle)
 
-                  verts.push(Qt.vector3d(x + dx, y + dy, 0))
-                  normals.push(Qt.vector3d(dx, dy, 0).normalized())
+                  // Calculate direction vector of the pipe
+                  let dirX = endX - startX
+                  let dirY = endY - startY
+                  let dirZ = endZ - startZ
+                  let length = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ)
+                  dirX /= length
+                  dirY /= length
+                  dirZ /= length
+
+                  // Calculate normal vector perpendicular to pipe direction
+                  let nx = dx
+                  let ny = dy
+                  let nz = 0
+                  
+                  verts.push(Qt.vector3d(x + dx, y + dy, z))
+                  normals.push(Qt.vector3d(nx, ny, nz).normalized())
                 }
               }
 
@@ -310,8 +327,9 @@ Item {
           }
 
           materials: PrincipledMaterial {
-            baseColor: Theme.mainColor
-            roughness: 0.5
+            baseColor: "#ff0000"  // Pure red color
+            roughness: 0.3        // Make it slightly more shiny
+            metalness: 0.1        // Add slight metallic look
           }
         }
           // /*
