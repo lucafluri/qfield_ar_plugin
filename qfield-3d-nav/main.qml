@@ -258,51 +258,54 @@ Item {
         //----------------------------
         Model {
           id: userPipe
-          property real tubeRadius: 0.05 // Radius of the tube
-          property real pipeLength: 5.0 // Length of the pipe (5 meters)
-          property int segments: 30 // Number of segments for the tube
-
-          position: Qt.vector3d(0, 0, 0)
-          rotation: Qt.vector3d(0, 90, 0) // Orient the tube along the X-axis (West-East)
+          property real tubeRadius: 0.1
 
           geometry: ProceduralMesh {
-            property var meshArrays: generateTube(tubeRadius, pipeLength, segments)
+            property var meshArrays: generateTube(tubeRadius)
 
             positions: meshArrays.verts
             normals: meshArrays.normals
             indexes: meshArrays.indices
 
-            function generateTube(radius: real, length: real, segments: int) {
+            function generateTube(radius: real) {
               let verts = []
               let normals = []
               let indices = []
+              let segments = 16
 
-              // Create vertices along the length of the pipe
+              let startX = plugin.fakePipeStart[0] - plugin.currentPosition[0]
+              let startY = plugin.fakePipeStart[1] - plugin.currentPosition[1]
+              let endX = plugin.fakePipeEnd[0] - plugin.currentPosition[0]
+              let endY = plugin.fakePipeEnd[1] - plugin.currentPosition[1]
+
               for (let i = 0; i <= segments; ++i) {
-                let v = i / segments;
-                let z = -length / 2 + v * length; // Center the pipe at the origin
-                for (let j = 0; j <= segments; ++j) {
-                  let u = j / segments * 2 * Math.PI;
-                  let x = radius * Math.cos(u);
-                  let y = radius * Math.sin(u);
+                let t = i / segments
+                let x = startX + t * (endX - startX)
+                let y = startY + t * (endY - startY)
 
-                  verts.push(Qt.vector3d(x, y, z));
-                  normals.push(Qt.vector3d(Math.cos(u), Math.sin(u), 0)); // Normal points outwards
+                for (let j = 0; j <= segments; ++j) {
+                  let angle = j / segments * Math.PI * 2
+                  let dx = radius * Math.cos(angle)
+                  let dy = radius * Math.sin(angle)
+
+                  verts.push(Qt.vector3d(x + dx, y + dy, 0))
+                  normals.push(Qt.vector3d(dx, dy, 0).normalized())
                 }
               }
 
-              // Create indices for the tube faces
               for (let i = 0; i < segments; ++i) {
                 for (let j = 0; j < segments; ++j) {
-                  let first = (i * (segments + 1)) + j;
-                  let second = first + segments + 1;
+                  let a = (segments + 1) * i + j
+                  let b = (segments + 1) * (i + 1) + j
+                  let c = (segments + 1) * (i + 1) + j + 1
+                  let d = (segments + 1) * i + j + 1
 
-                  indices.push(first, second, first + 1);
-                  indices.push(second, second + 1, first + 1);
+                  indices.push(a, b, d)
+                  indices.push(b, c, d)
                 }
               }
 
-              return { verts: verts, normals: normals, indices: indices };
+              return { verts: verts, normals: normals, indices: indices }
             }
           }
 
