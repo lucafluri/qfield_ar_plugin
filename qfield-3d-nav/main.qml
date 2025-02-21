@@ -254,126 +254,144 @@ Item {
 
       Node {
         //----------------------------
-        // 1) Some spheres for testing
+        // 1) Pipe from West to East
         //----------------------------
-        Repeater3D {
-          model: plugin.points
+        Model {
+          id: userPipe
+          source: "#Cylinder"
+          scale: Qt.vector3d(0.05, 0.05, 5)  // Adjust radius (0.05) and length (5) as needed
+          position: Qt.vector3d(0, 0, 0) // Center of the pipe
+          rotation: Qt.vector3d(0, 90, 0)   // Rotate to align with X-axis (East-West)
 
-          delegate: Model {
-            position: Qt.vector3d(
-                          modelData[0] - plugin.currentPosition[0],
-                          modelData[1] - plugin.currentPosition[1],
-                          modelData[2])
-            source: "#Sphere"
-            scale: Qt.vector3d(0.005, 0.005, 0.005)
-
-            materials: PrincipledMaterial {
-              baseColor: index == 0
-                         ? Theme.accuracyTolerated
-                         : index == plugin.points.length - 1
-                           ? Theme.accuracyBad
-                           : Theme.mainColor
-              roughness: 0.5
-            }
+          materials: PrincipledMaterial {
+            baseColor: Theme.mainColor // Use your theme color
+            roughness: 0.5
           }
         }
+          // /*
+          // //----------------------------
+          // // 1) Some spheres for testing (REMOVED)
+          // //----------------------------
+          // Repeater3D {
+          //   model: plugin.points
 
-        //----------------------------
-        // 2) Repeater for pipe lines
-        //----------------------------
-        Repeater3D {
-          model: pipeFeatures
+          //   delegate: Model {
+          //     position: Qt.vector3d(
+          //                   modelData[0] - plugin.currentPosition[0],
+          //                   modelData[1] - plugin.currentPosition[1],
+          //                   modelData[2])
+          //     source: "#Sphere"
+          //     scale: Qt.vector3d(0.005, 0.005, 0.005)
 
-          delegate: Model {
-            required property var geometry
-            required property var id
+          //     materials: PrincipledMaterial {
+          //       baseColor: index == 0
+          //                  ? Theme.accuracyTolerated
+          //                  : index == plugin.points.length - 1
+          //                    ? Theme.accuracyBad
+          //                    : Theme.mainColor
+          //       roughness: 0.5
+          //     }
+          //   }
+          // }
+          // */
 
-            // Approximate pipe with a cylinder
-            property var geometryWrapper: QgsGeometryWrapper { qgsGeometry: testPipesLayer.getFeature("0").geometry; crs: testPipesLayer.crs }
-            property var pointList: geometryWrapper.pointList()
-            property var startPoint: pointList[0]
-            property var endPoint: pointList[pointList.length - 1]
-            property var startPointX: startPoint ? startPoint.property('x') : 0
-            property var startPointY: startPoint ? startPoint.property('y') : 0
-            property var endPointX: endPoint ? endPoint.property('x') : 0
-            property var endPointY: endPoint ? endPoint.property('y') : 0
-            property var dx: endPoint ? endPointX - startPointX : 0
-            property var dy: endPoint ? endPointY - startPointY : 0
-            property var segmentLength: Math.sqrt(dx*dx + dy*dy)
+          // /*
+          // //----------------------------
+          // // 2) Repeater for pipe lines (COMMENTED OUT TO AVOID OVERLAP)
+          // //----------------------------
+          // Repeater3D {
+          //   model: pipeFeatures
 
-            position: Qt.vector3d(startPointX - plugin.currentPosition[0], 
-                                startPointY - plugin.currentPosition[1], 
-                                0)
-            geometry: ProceduralMesh {
-              property real segments: 10
-              property real tubeRadius: 0.1
-              property var meshArrays: generateTube(segments, tubeRadius)
+          //   delegate: Model {
+          //     required property var geometry
+          //     required property var id
 
-              positions: meshArrays.verts
-              normals: meshArrays.normals
-              indexes: meshArrays.indices
+          //     // Approximate pipe with a cylinder
+          //     property var geometryWrapper: QgsGeometryWrapper { qgsGeometry: testPipesLayer.getFeature("0").geometry; crs: testPipesLayer.crs }
+          //     property var pointList: geometryWrapper.pointList()
+          //     property var startPoint: pointList[0]
+          //     property var endPoint: pointList[pointList.length - 1]
+          //     property var startPointX: startPoint ? startPoint.property('x') : 0
+          //     property var startPointY: startPoint ? startPoint.property('y') : 0
+          //     property var endPointX: endPoint ? endPointX - startPointX : 0
+          //     property var endPointY: endPoint ? endPointY - startPointY : 0
+          //     property var dx: endPoint ? endPointX - startPointX : 0
+          //     property var dy: endPoint ? endPointY - startPointY : 0
+          //     property var segmentLength: Math.sqrt(dx*dx + dy*dy)... position: Qt.vector3d(startPointX - plugin.currentPosition[0],
+          //                         startPointY - plugin.currentPosition[1],
+          //                         0)
+          //     geometry: ProceduralMesh {
+          //       property real segments: 10
+          //       property real tubeRadius: 0.1
+          //       property var meshArrays: generateTube(segments, tubeRadius)
 
-              function generateTube(segments: real, tubeRadius: real) {
-                let verts = []
-                let normals = []
-                let indices = []
-                let uvs = []
+          //       positions: meshArrays.verts
+          //       normals: meshArrays.normals
+          //       indexes: meshArrays.indices
 
-                // Use the actual pipe geometry points
-                let pos = []
-                for (let i = 0; i < pointList.length; i++) {
-                  pos.push([
-                    pointList[i].property('x') - startPointX,
-                    pointList[i].property('y') - startPointY,
-                    0
-                  ])
-                }
+          //       function generateTube(segments: real, tubeRadius: real) {
+          //         let verts = []
+          //         let normals = []
+          //         let indices = []
+          //         let uvs = []
 
-                for (let i = 0; i < pos.length; ++i) {
-                  for (let j = 0; j <= segments; ++j) {
-                    let v = j / segments * Math.PI * 2
+          //         // Use the actual pipe geometry points
+          //         let pos = []
+          //         for (let i = 0; i < pointList.length; i++) {
+          //           pos.push([
+          //             pointList[i].property('x') - startPointX,
+          //             pointList[i].property('y') - startPointY,
+          //             0
+          //           ])
+          //         }
 
-                    let centerX = pos[i][0]
-                    let centerY = pos[i][1]
-                    let centerZ = pos[i][2]
+          //         for (let i = 0; i < pos.length; ++i) {
+          //           for (let j = 0; j <= segments; ++j) {
+          //             let v = j / segments * Math.PI * 2
 
-                    let posX = centerX + tubeRadius * Math.sin(v)
-                    let posY = centerY + tubeRadius * Math.cos(v)
-                    let posZ = centerZ + tubeRadius * Math.cos(v)
+          //             let centerX = pos[i][0]
+          //             let centerY = pos[i][1]
+          //             let centerZ = pos[i][2]
 
-                    verts.push(Qt.vector3d(posX, posY, posZ))
+          //             let posX = centerX + tubeRadius * Math.sin(v)
+          //             let posY = centerY + tubeRadius * Math.cos(v)
+          //             let posZ = centerZ + tubeRadius * Math.cos(v)
 
-                    let normal = Qt.vector3d(posX - centerX, posY - centerY, posZ - centerZ).normalized()
-                    normals.push(normal)
+          //             verts.push(Qt.vector3d(posX, posY, posZ))
 
-                    uvs.push(Qt.vector2d(i / pos.length, j / segments))
-                  }
-                }
+          //             let normal = Qt.vector3d(posX - centerX, posY - centerY, posZ - centerZ).normalized()
+          //             normals.push(normal)
 
-                for (let i = 0; i < pos.length - 1; ++i) {
-                  for (let j = 0; j < segments; ++j) {
-                    let a = (segments + 1) * i + j
-                    let b = (segments + 1) * (i + 1) + j
-                    let c = (segments + 1) * (i + 1) + j + 1
-                    let d = (segments + 1) * i + j + 1
+          //             uvs.push(Qt.vector2d(i / pos.length, j / segments))
+          //           }
+          //         }
 
-                    indices.push(a, d, b)
-                    indices.push(b, d, c)
-                  }
-                }
+          //         for (let i = 0; i < pos.length - 1; ++i) {
+          //           for (let j = 0; j < segments; ++j) {
+          //             let a = (segments + 1) * i + j
+          //             let b = (segments + 1) * (i + 1) + j
+          //             let c = (segments + 1) * (i + 1) + j + 1
+          //             let d = (segments + 1) * i + j + 1
 
-                return { verts: verts, normals: normals, uvs: uvs, indices: indices }
-              }
-            }
+          //             indices.push(a, d, b)
+          //             indices.push(b, d, c)
+          //           }
+          //         }
 
-            materials: PrincipledMaterial {
-              baseColor: Theme.mainColor
-              roughness: 0.5
-            }
-          }
+          //         return { verts: verts, normals: normals, uvs: uvs, indices: indices }
+          //       }
+          //     }
+
+          //     materials: PrincipledMaterial {
+          //       baseColor: Theme.mainColor
+          //       roughness: 0.5
+          //     }
+          //   }
+          // }
+          // */
         }
       }
-    }
+
 
     //----------------------------------
     // Close button
