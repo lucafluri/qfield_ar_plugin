@@ -253,6 +253,91 @@ Item {
       }
 
       Node {
+        // Test Pipes Layer Visualization
+        Repeater3D {
+          model: plugin.pipeFeatures
+
+          delegate: Model {
+            required property var modelData
+
+            geometry: ProceduralMesh {
+              property real segments: 16
+              property real tubeRadius: 0.05
+              property var meshArrays: generateTube(segments, tubeRadius)
+
+              positions: meshArrays.verts
+              normals: meshArrays.normals
+              indexes: meshArrays.indices
+
+              function generateTube(segments: real, tubeRadius: real) {
+                let verts = []
+                let normals = []
+                let indices = []
+                let uvs = []
+
+                // Get the geometry points from the pipe feature
+                let geometryWrapper = Qt.createQmlObject('import org.qgis; QgsGeometryWrapper { }', parent)
+                geometryWrapper.qgsGeometry = modelData.geometry
+                geometryWrapper.crs = plugin.testPipesLayer.crs
+                let pointList = geometryWrapper.pointList()
+
+                // Create position array from geometry points
+                let pos = []
+                for (let i = 0; i < pointList.length; ++i) {
+                  pos.push([
+                    pointList[i].x() - plugin.currentPosition[0],
+                    pointList[i].y() - plugin.currentPosition[1],
+                    pointList[i].z() || 0
+                  ])
+                }
+
+                // Generate vertices and normals
+                for (let i = 0; i < pos.length; ++i) {
+                  for (let j = 0; j <= segments; ++j) {
+                    let v = j / segments * Math.PI * 2
+
+                    let centerX = pos[i][0]
+                    let centerY = pos[i][1]
+                    let centerZ = pos[i][2]
+
+                    let posX = centerX + tubeRadius * Math.sin(v)
+                    let posY = centerY + tubeRadius * Math.cos(v)
+                    let posZ = centerZ + tubeRadius * Math.cos(v)
+
+                    verts.push(Qt.vector3d(posX, posY, posZ))
+
+                    let normal = Qt.vector3d(posX - centerX, posY - centerY, posZ - centerZ).normalized()
+                    normals.push(normal)
+
+                    uvs.push(Qt.vector2d(i / pos.length, j / segments))
+                  }
+                }
+
+                // Generate indices for triangles
+                for (let i = 0; i < pos.length - 1; ++i) {
+                  for (let j = 0; j < segments; ++j) {
+                    let a = (segments + 1) * i + j
+                    let b = (segments + 1) * (i + 1) + j
+                    let c = (segments + 1) * (i + 1) + j + 1
+                    let d = (segments + 1) * i + j + 1
+
+                    indices.push(a, d, b)
+                    indices.push(b, d, c)
+                  }
+                }
+
+                return { verts: verts, normals: normals, uvs: uvs, indices: indices }
+              }
+            }
+
+            materials: PrincipledMaterial {
+              baseColor: "#0066ff"  // Blue color for actual pipe data
+              roughness: 0.3
+              metalness: 0.1
+            }
+          }
+        }
+
         // Pipe visualization using Repeater3D
         Repeater3D {
           model: plugin.fakePipeStart && plugin.fakePipeEnd ? 1 : 0  // Only create one pipe when we have start/end
