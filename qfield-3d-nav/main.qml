@@ -258,7 +258,8 @@ Item {
         //----------------------------
         Model {
           id: userPipe
-          property real tubeRadius: 0.1
+          property real tubeRadius: 0.05  // Made slightly smaller for better visibility
+          visible: plugin.fakePipeStart && plugin.fakePipeEnd  // Only show when we have start/end points
 
           geometry: ProceduralMesh {
             property var meshArrays: generateTube(tubeRadius)
@@ -273,40 +274,40 @@ Item {
               let indices = []
               let segments = 16
 
+              // Ensure we have valid start/end points
+              if (!plugin.fakePipeStart || !plugin.fakePipeEnd) {
+                return { verts: [], normals: [], indices: [] }
+              }
+
               let startX = plugin.fakePipeStart[0] - plugin.currentPosition[0]
               let startY = plugin.fakePipeStart[1] - plugin.currentPosition[1]
-              let startZ = plugin.fakePipeStart[2] || 0  // Default to 0 if undefined
+              let startZ = plugin.fakePipeStart[2] || 0
               let endX = plugin.fakePipeEnd[0] - plugin.currentPosition[0]
               let endY = plugin.fakePipeEnd[1] - plugin.currentPosition[1]
-              let endZ = plugin.fakePipeEnd[2] || 0  // Default to 0 if undefined
+              let endZ = plugin.fakePipeEnd[2] || 0
+
+              // Ensure we have a minimum length to avoid rendering issues
+              let dx = endX - startX
+              let dy = endY - startY
+              let dz = endZ - startZ
+              let length = Math.sqrt(dx * dx + dy * dy + dz * dz)
+              if (length < 0.0001) {
+                return { verts: [], normals: [], indices: [] }
+              }
 
               for (let i = 0; i <= segments; ++i) {
                 let t = i / segments
-                let x = startX + t * (endX - startX)
-                let y = startY + t * (endY - startY)
-                let z = startZ + t * (endZ - startZ)
+                let x = startX + t * dx
+                let y = startY + t * dy
+                let z = startZ + t * dz
 
                 for (let j = 0; j <= segments; ++j) {
                   let angle = j / segments * Math.PI * 2
-                  let dx = radius * Math.cos(angle)
-                  let dy = radius * Math.sin(angle)
+                  let rx = radius * Math.cos(angle)
+                  let ry = radius * Math.sin(angle)
 
-                  // Calculate direction vector of the pipe
-                  let dirX = endX - startX
-                  let dirY = endY - startY
-                  let dirZ = endZ - startZ
-                  let length = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ)
-                  dirX /= length
-                  dirY /= length
-                  dirZ /= length
-
-                  // Calculate normal vector perpendicular to pipe direction
-                  let nx = dx
-                  let ny = dy
-                  let nz = 0
-                  
-                  verts.push(Qt.vector3d(x + dx, y + dy, z))
-                  normals.push(Qt.vector3d(nx, ny, nz).normalized())
+                  verts.push(Qt.vector3d(x + rx, y + ry, z))
+                  normals.push(Qt.vector3d(rx / radius, ry / radius, 0).normalized())
                 }
               }
 
@@ -327,134 +328,33 @@ Item {
           }
 
           materials: PrincipledMaterial {
-            baseColor: "#ff0000"  // Pure red color
-            roughness: 0.3        // Make it slightly more shiny
-            metalness: 0.1        // Add slight metallic look
+            baseColor: "#ff0000"
+            roughness: 0.3
+            metalness: 0.1
           }
         }
-          // /*
-          // //----------------------------
-          // // 1) Some spheres for testing (REMOVED)
-          // //----------------------------
-          // Repeater3D {
-          //   model: plugin.points
 
-          //   delegate: Model {
-          //     position: Qt.vector3d(
-          //                   modelData[0] - plugin.currentPosition[0],
-          //                   modelData[1] - plugin.currentPosition[1],
-          //                   modelData[2])
-          //     source: "#Sphere"
-          //     scale: Qt.vector3d(0.005, 0.005, 0.005)
+        // Spheres for visualizing points
+        Repeater3D {
+          model: plugin.points
 
-          //     materials: PrincipledMaterial {
-          //       baseColor: index == 0
-          //                  ? Theme.accuracyTolerated
-          //                  : index == plugin.points.length - 1
-          //                    ? Theme.accuracyBad
-          //                    : Theme.mainColor
-          //       roughness: 0.5
-          //     }
-          //   }
-          // }
-          // */
+          delegate: Model {
+            position: Qt.vector3d(
+                          modelData[0] - plugin.currentPosition[0],
+                          modelData[1] - plugin.currentPosition[1],
+                          modelData[2] || 0)
+            source: "#Sphere"
+            scale: Qt.vector3d(0.05, 0.05, 0.05)  // Made spheres larger for better visibility
 
-          // /*
-          // //----------------------------
-          // // 2) Repeater for pipe lines (COMMENTED OUT TO AVOID OVERLAP)
-          // //----------------------------
-          // Repeater3D {
-          //   model: pipeFeatures
-
-          //   delegate: Model {
-          //     required property var geometry
-          //     required property var id
-
-          //     // Approximate pipe with a cylinder
-          //     property var geometryWrapper: QgsGeometryWrapper { qgsGeometry: testPipesLayer.getFeature("0").geometry; crs: testPipesLayer.crs }
-          //     property var pointList: geometryWrapper.pointList()
-          //     property var startPoint: pointList[0]
-          //     property var endPoint: pointList[pointList.length - 1]
-          //     property var startPointX: startPoint ? startPoint.property('x') : 0
-          //     property var startPointY: startPoint ? startPoint.property('y') : 0
-          //     property var endPointX: endPoint ? endPointX - startPointX : 0
-          //     property var endPointY: endPoint ? endPointY - startPointY : 0
-          //     property var dx: endPoint ? endPointX - startPointX : 0
-          //     property var dy: endPoint ? endPointY - startPointY : 0
-          //     property var segmentLength: Math.sqrt(dx*dx + dy*dy)... position: Qt.vector3d(startPointX - plugin.currentPosition[0],
-          //                         startPointY - plugin.currentPosition[1],
-          //                         0)
-          //     geometry: ProceduralMesh {
-          //       property real segments: 10
-          //       property real tubeRadius: 0.1
-          //       property var meshArrays: generateTube(segments, tubeRadius)
-
-          //       positions: meshArrays.verts
-          //       normals: meshArrays.normals
-          //       indexes: meshArrays.indices
-
-          //       function generateTube(segments: real, tubeRadius: real) {
-          //         let verts = []
-          //         let normals = []
-          //         let indices = []
-          //         let uvs = []
-
-          //         // Use the actual pipe geometry points
-          //         let pos = []
-          //         for (let i = 0; i < pointList.length; i++) {
-          //           pos.push([
-          //             pointList[i].property('x') - startPointX,
-          //             pointList[i].property('y') - startPointY,
-          //             0
-          //           ])
-          //         }
-
-          //         for (let i = 0; i < pos.length; ++i) {
-          //           for (let j = 0; j <= segments; ++j) {
-          //             let v = j / segments * Math.PI * 2
-
-          //             let centerX = pos[i][0]
-          //             let centerY = pos[i][1]
-          //             let centerZ = pos[i][2]
-
-          //             let posX = centerX + tubeRadius * Math.sin(v)
-          //             let posY = centerY + tubeRadius * Math.cos(v)
-          //             let posZ = centerZ + tubeRadius * Math.cos(v)
-
-          //             verts.push(Qt.vector3d(posX, posY, posZ))
-
-          //             let normal = Qt.vector3d(posX - centerX, posY - centerY, posZ - centerZ).normalized()
-          //             normals.push(normal)
-
-          //             uvs.push(Qt.vector2d(i / pos.length, j / segments))
-          //           }
-          //         }
-
-          //         for (let i = 0; i < pos.length - 1; ++i) {
-          //           for (let j = 0; j < segments; ++j) {
-          //             let a = (segments + 1) * i + j
-          //             let b = (segments + 1) * (i + 1) + j
-          //             let c = (segments + 1) * (i + 1) + j + 1
-          //             let d = (segments + 1) * i + j + 1
-
-          //             indices.push(a, d, b)
-          //             indices.push(b, d, c)
-          //           }
-          //         }
-
-          //         return { verts: verts, normals: normals, uvs: uvs, indices: indices }
-          //       }
-          //     }
-
-          //     materials: PrincipledMaterial {
-          //       baseColor: Theme.mainColor
-          //       roughness: 0.5
-          //     }
-          //   }
-          // }
-          // */
+            materials: PrincipledMaterial {
+              baseColor: index === 0 ? "#00ff00" : "#0000ff"  // Green for start, blue for others
+              roughness: 0.3
+              metalness: 0.1
+            }
+          }
         }
       }
+    }
 
 
     //----------------------------------
