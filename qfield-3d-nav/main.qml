@@ -276,7 +276,7 @@ Item {
                 let uvs = []
 
                 // Get the geometry points from the pipe feature
-                let geometryWrapper = Qt.createQmlObject('import org.qgis; QgsGeometryWrapper { }', parent)
+                let geometryWrapper: QgsGeometryWrapper { qgsGeometry: geometry; crs: testPipesLayer.crs }
                 geometryWrapper.qgsGeometry = modelData.geometry
                 geometryWrapper.crs = plugin.testPipesLayer.crs
                 let pointList = geometryWrapper.pointList()
