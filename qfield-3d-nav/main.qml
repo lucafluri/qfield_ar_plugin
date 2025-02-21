@@ -253,88 +253,93 @@ Item {
       }
 
       Node {
-        //----------------------------
-        // 1) Tube/Pipe using ProceduralMesh
-        //----------------------------
-        Model {
-          id: userPipe
-          property real tubeRadius: 0.05  // Made slightly smaller for better visibility
-          visible: plugin.fakePipeStart && plugin.fakePipeEnd  // Only show when we have start/end points
+        // Pipe visualization using Repeater3D
+        Repeater3D {
+          model: plugin.fakePipeStart && plugin.fakePipeEnd ? 1 : 0  // Only create one pipe when we have start/end
 
-          geometry: ProceduralMesh {
-            property var meshArrays: generateTube(tubeRadius)
+          delegate: Model {
+            position: Qt.vector3d(0, 0, 0)  // Position is handled in the mesh
 
-            positions: meshArrays.verts
-            normals: meshArrays.normals
-            indexes: meshArrays.indices
+            geometry: ProceduralMesh {
+              property real segments: 16
+              property real tubeRadius: 0.05
+              property var meshArrays: generateTube(segments, tubeRadius)
 
-            function generateTube(radius: real) {
-              let verts = []
-              let normals = []
-              let indices = []
-              let segments = 16
+              positions: meshArrays.verts
+              normals: meshArrays.normals
+              indexes: meshArrays.indices
 
-              // Ensure we have valid start/end points
-              if (!plugin.fakePipeStart || !plugin.fakePipeEnd) {
-                return { verts: [], normals: [], indices: [] }
-              }
+              function generateTube(segments: real, tubeRadius: real) {
+                let verts = []
+                let normals = []
+                let indices = []
+                let uvs = []
 
-              let startX = plugin.fakePipeStart[0] - plugin.currentPosition[0]
-              let startY = plugin.fakePipeStart[1] - plugin.currentPosition[1]
-              let startZ = plugin.fakePipeStart[2] || 0
-              let endX = plugin.fakePipeEnd[0] - plugin.currentPosition[0]
-              let endY = plugin.fakePipeEnd[1] - plugin.currentPosition[1]
-              let endZ = plugin.fakePipeEnd[2] || 0
-
-              // Ensure we have a minimum length to avoid rendering issues
-              let dx = endX - startX
-              let dy = endY - startY
-              let dz = endZ - startZ
-              let length = Math.sqrt(dx * dx + dy * dy + dz * dz)
-              if (length < 0.0001) {
-                return { verts: [], normals: [], indices: [] }
-              }
-
-              for (let i = 0; i <= segments; ++i) {
-                let t = i / segments
-                let x = startX + t * dx
-                let y = startY + t * dy
-                let z = startZ + t * dz
-
-                for (let j = 0; j <= segments; ++j) {
-                  let angle = j / segments * Math.PI * 2
-                  let rx = radius * Math.cos(angle)
-                  let ry = radius * Math.sin(angle)
-
-                  verts.push(Qt.vector3d(x + rx, y + ry, z))
-                  normals.push(Qt.vector3d(rx / radius, ry / radius, 0).normalized())
+                // Create position array from start to end point
+                let pos = []
+                if (plugin.fakePipeStart && plugin.fakePipeEnd) {
+                  pos = [
+                    [
+                      plugin.fakePipeStart[0] - plugin.currentPosition[0],
+                      plugin.fakePipeStart[1] - plugin.currentPosition[1],
+                      plugin.fakePipeStart[2] || 0
+                    ],
+                    [
+                      plugin.fakePipeEnd[0] - plugin.currentPosition[0],
+                      plugin.fakePipeEnd[1] - plugin.currentPosition[1],
+                      plugin.fakePipeEnd[2] || 0
+                    ]
+                  ]
                 }
-              }
 
-              for (let i = 0; i < segments; ++i) {
-                for (let j = 0; j < segments; ++j) {
-                  let a = (segments + 1) * i + j
-                  let b = (segments + 1) * (i + 1) + j
-                  let c = (segments + 1) * (i + 1) + j + 1
-                  let d = (segments + 1) * i + j + 1
+                // Generate vertices and normals
+                for (let i = 0; i < pos.length; ++i) {
+                  for (let j = 0; j <= segments; ++j) {
+                    let v = j / segments * Math.PI * 2
 
-                  indices.push(a, b, d)
-                  indices.push(b, c, d)
+                    let centerX = pos[i][0]
+                    let centerY = pos[i][1]
+                    let centerZ = pos[i][2]
+
+                    let posX = centerX + tubeRadius * Math.sin(v)
+                    let posY = centerY + tubeRadius * Math.cos(v)
+                    let posZ = centerZ + tubeRadius * Math.cos(v)
+
+                    verts.push(Qt.vector3d(posX, posY, posZ))
+
+                    let normal = Qt.vector3d(posX - centerX, posY - centerY, posZ - centerZ).normalized()
+                    normals.push(normal)
+
+                    uvs.push(Qt.vector2d(i / pos.length, j / segments))
+                  }
                 }
-              }
 
-              return { verts: verts, normals: normals, indices: indices }
+                // Generate indices for triangles
+                for (let i = 0; i < pos.length - 1; ++i) {
+                  for (let j = 0; j < segments; ++j) {
+                    let a = (segments + 1) * i + j
+                    let b = (segments + 1) * (i + 1) + j
+                    let c = (segments + 1) * (i + 1) + j + 1
+                    let d = (segments + 1) * i + j + 1
+
+                    indices.push(a, d, b)
+                    indices.push(b, d, c)
+                  }
+                }
+
+                return { verts: verts, normals: normals, uvs: uvs, indices: indices }
+              }
             }
-          }
 
-          materials: PrincipledMaterial {
-            baseColor: "#ff0000"
-            roughness: 0.3
-            metalness: 0.1
+            materials: PrincipledMaterial {
+              baseColor: "#ff0000"
+              roughness: 0.3
+              metalness: 0.1
+            }
           }
         }
 
-        // Spheres for visualizing points
+        // Points visualization
         Repeater3D {
           model: plugin.points
 
@@ -344,7 +349,7 @@ Item {
                           modelData[1] - plugin.currentPosition[1],
                           modelData[2] || 0)
             source: "#Sphere"
-            scale: Qt.vector3d(0.05, 0.05, 0.05)  // Made spheres larger for better visibility
+            scale: Qt.vector3d(0.01, 0.01, 0.01)
 
             materials: PrincipledMaterial {
               baseColor: index === 0 ? "#00ff00" : "#0000ff"  // Green for start, blue for others
