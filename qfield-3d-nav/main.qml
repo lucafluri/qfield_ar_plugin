@@ -254,17 +254,60 @@ Item {
 
       Node {
         //----------------------------
-        // 1) Pipe from West to East
+        // 1) Tube/Pipe using ProceduralMesh
         //----------------------------
         Model {
           id: userPipe
-          source: "#Cylinder"
-          scale: Qt.vector3d(0.05, 0.05, 5)  // Adjust radius (0.05) and length (5) as needed
-          position: Qt.vector3d(0, 0, 0) // Center of the pipe
-          rotation: Qt.vector3d(0, 90, 0)   // Rotate to align with X-axis (East-West)
+          property real tubeRadius: 0.05 // Radius of the tube
+          property real pipeLength: 5.0 // Length of the pipe (5 meters)
+          property int segments: 30 // Number of segments for the tube
+
+          position: Qt.vector3d(0, 0, 0)
+          rotation: Qt.vector3d(0, 90, 0) // Orient the tube along the X-axis (West-East)
+
+          geometry: ProceduralMesh {
+            property var meshArrays: generateTube(tubeRadius, pipeLength, segments)
+
+            positions: meshArrays.verts
+            normals: meshArrays.normals
+            indexes: meshArrays.indices
+
+            function generateTube(radius: real, length: real, segments: int) {
+              let verts = []
+              let normals = []
+              let indices = []
+
+              // Create vertices along the length of the pipe
+              for (let i = 0; i <= segments; ++i) {
+                let v = i / segments;
+                let z = -length / 2 + v * length; // Center the pipe at the origin
+                for (let j = 0; j <= segments; ++j) {
+                  let u = j / segments * 2 * Math.PI;
+                  let x = radius * Math.cos(u);
+                  let y = radius * Math.sin(u);
+
+                  verts.push(Qt.vector3d(x, y, z));
+                  normals.push(Qt.vector3d(Math.cos(u), Math.sin(u), 0)); // Normal points outwards
+                }
+              }
+
+              // Create indices for the tube faces
+              for (let i = 0; i < segments; ++i) {
+                for (let j = 0; j < segments; ++j) {
+                  let first = (i * (segments + 1)) + j;
+                  let second = first + segments + 1;
+
+                  indices.push(first, second, first + 1);
+                  indices.push(second, second + 1, first + 1);
+                }
+              }
+
+              return { verts: verts, normals: normals, indices: indices };
+            }
+          }
 
           materials: PrincipledMaterial {
-            baseColor: Theme.mainColor // Use your theme color
+            baseColor: Theme.mainColor
             roughness: 0.5
           }
         }
