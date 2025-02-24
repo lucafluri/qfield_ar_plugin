@@ -260,6 +260,15 @@ Item {
           delegate: Model {
             required property var modelData
 
+            // Component for creating geometry wrappers
+            Component {
+              id: geometryWrapperComponent
+              QgsGeometryWrapper {
+                qgsGeometry: modelData.geometry
+                crs: plugin.testPipesLayer.crs
+              }
+            }
+
             geometry: ProceduralMesh {
               property real segments: 16
               property real tubeRadius: 0.05
@@ -278,37 +287,21 @@ Item {
                 // Get the geometry points from the pipe feature
                 let pos = []
                 
-                // Create a QgsGeometryWrapper component
-                let wrapper = Qt.createQmlObject(`
-                    import org.qgis
-                    QgsGeometryWrapper {
-                        qgsGeometry: modelData.geometry
-                        crs: plugin.testPipesLayer.crs
+                // Create a geometry wrapper instance
+                let wrapper = geometryWrapperComponent.createObject(null)
+                if (wrapper) {
+                    let pointList = wrapper.pointList()
+                    if (pointList) {
+                        for (let i = 0; i < pointList.length; ++i) {
+                            pos.push([
+                                pointList[i].x() - plugin.currentPosition[0],
+                                pointList[i].y() - plugin.currentPosition[1],
+                                pointList[i].z() || 0
+                            ])
+                        }
                     }
-                `, parent)
-                
-                let pointList = wrapper.pointList()
-                if (pointList) {
-                    for (let i = 0; i < pointList.length; ++i) {
-                        pos.push([
-                            pointList[i].x() - plugin.currentPosition[0],
-                            pointList[i].y() - plugin.currentPosition[1],
-                            pointList[i].z() || 0
-                        ])
-                    }
-                } else {
-                    console.error("Failed to get point list from geometry")
+                    wrapper.destroy()
                 }
-
-                // Create position array from geometry points
-                // let pos = []
-                // for (let i = 0; i < pointList.length; ++i) {
-                //   pos.push([
-                //     pointList[i].x() - plugin.currentPosition[0],
-                //     pointList[i].y() - plugin.currentPosition[1],
-                //     pointList[i].z() || 0
-                //   ])
-                // }
 
                 // Generate vertices and normals
                 for (let i = 0; i < pos.length; ++i) {
