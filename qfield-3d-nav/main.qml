@@ -76,14 +76,14 @@ Item {
   }
 
   function initLayer() {
-    logMsg("=== initLayer() ===")
-    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
-    logMsg("Pipe Layer: " + (testPipesLayer ? testPipesLayer.name : "not found")) 
+    // logMsg("=== initLayer() ===")
+    // testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
+    // logMsg("Pipe Layer: " + (testPipesLayer ? testPipesLayer.name : "not found")) 
 
     if (testPipesLayer) {
-      logMsg("Feature 0: " + testPipesLayer.getFeature("0"))
+      // logMsg("Feature 0: " + testPipesLayer.getFeature("0"))
       logMsg("Geometry 0: " + testPipesLayer.getFeature("0").geometry)
-      logMsg("Feature 1: " + testPipesLayer.getFeature("1"))
+      // logMsg("Feature 1: " + testPipesLayer.getFeature("1"))
       logMsg("Geometry 1: " + testPipesLayer.getFeature("1").geometry)
     }
 
@@ -289,6 +289,7 @@ Item {
                 
                 // Create a geometry wrapper instance
                 let wrapper = geometryWrapperComponent.createObject(null);
+                logMsg("Wrapper: " + wrapper)
                 if (wrapper) {
                   let pointList = wrapper.pointList();
                     if (pointList && pointList.length > 0) {
@@ -297,7 +298,7 @@ Item {
                     let dy = pointList[0].y() - plugin.currentPosition[1];
                     let dz = (pointList[0].z() || 0) - plugin.currentPosition[2];
                     let dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                    plugin.logMsg("Distance for feature " + modelData.id + ": " + dist.toFixed(2));
+                    logMsg("Distance for feature " + modelData.id + ": " + dist.toFixed(2));
                     // Populate pos array from all geometry points
                     for (let i = 0; i < pointList.length; ++i) {
                     pos.push([
