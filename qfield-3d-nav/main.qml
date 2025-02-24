@@ -276,20 +276,39 @@ Item {
                 let uvs = []
 
                 // Get the geometry points from the pipe feature
-                let geometryWrapper: QgsGeometryWrapper { qgsGeometry: geometry; crs: testPipesLayer.crs }
-                geometryWrapper.qgsGeometry = modelData.geometry
-                geometryWrapper.crs = plugin.testPipesLayer.crs
-                let pointList = geometryWrapper.pointList()
+                let pos = []
+                
+                // Create a QgsGeometryWrapper component
+                let wrapper = Qt.createQmlObject(`
+                    import org.qgis
+                    QgsGeometryWrapper {
+                        qgsGeometry: modelData.geometry
+                        crs: plugin.testPipesLayer.crs
+                    }
+                `, parent)
+                
+                let pointList = wrapper.pointList()
+                if (pointList) {
+                    for (let i = 0; i < pointList.length; ++i) {
+                        pos.push([
+                            pointList[i].x() - plugin.currentPosition[0],
+                            pointList[i].y() - plugin.currentPosition[1],
+                            pointList[i].z() || 0
+                        ])
+                    }
+                } else {
+                    console.error("Failed to get point list from geometry")
+                }
 
                 // Create position array from geometry points
-                let pos = []
-                for (let i = 0; i < pointList.length; ++i) {
-                  pos.push([
-                    pointList[i].x() - plugin.currentPosition[0],
-                    pointList[i].y() - plugin.currentPosition[1],
-                    pointList[i].z() || 0
-                  ])
-                }
+                // let pos = []
+                // for (let i = 0; i < pointList.length; ++i) {
+                //   pos.push([
+                //     pointList[i].x() - plugin.currentPosition[0],
+                //     pointList[i].y() - plugin.currentPosition[1],
+                //     pointList[i].z() || 0
+                //   ])
+                // }
 
                 // Generate vertices and normals
                 for (let i = 0; i < pos.length; ++i) {
