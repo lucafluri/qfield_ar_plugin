@@ -288,19 +288,30 @@ Item {
                 let pos = []
                 
                 // Create a geometry wrapper instance
-                let wrapper = geometryWrapperComponent.createObject(null)
+                let wrapper = geometryWrapperComponent.createObject(null);
                 if (wrapper) {
-                    let pointList = wrapper.pointList()
-                    if (pointList) {
-                        for (let i = 0; i < pointList.length; ++i) {
-                            pos.push([
-                                pointList[i].x() - plugin.currentPosition[0],
-                                pointList[i].y() - plugin.currentPosition[1],
-                                pointList[i].z() || 0
-                            ])
-                        }
+                  let pointList = wrapper.pointList();
+                    if (pointList && pointList.length > 0) {
+                    // Compute distance from plugin.currentPosition to the first point
+                    let dx = pointList[0].x() - plugin.currentPosition[0];
+                    let dy = pointList[0].y() - plugin.currentPosition[1];
+                    let dz = (pointList[0].z() || 0) - plugin.currentPosition[2];
+                    let dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    plugin.logMsg("Distance for feature " + modelData.id + ": " + dist.toFixed(2));
+                    // Populate pos array from all geometry points
+                    for (let i = 0; i < pointList.length; ++i) {
+                    pos.push([
+                      pointList[i].x() - plugin.currentPosition[0],
+                      pointList[i].y() - plugin.currentPosition[1],
+                      pointList[i].z() || 0
+                    ]);
                     }
-                    wrapper.destroy()
+                  } else {
+                    console.error("Failed to get valid pointList for feature", modelData.id);
+                  }
+                  wrapper.destroy();
+                } else {
+                  console.error("Failed to create geometry wrapper for feature", modelData.id);
                 }
 
                 // Generate vertices and normals
