@@ -151,32 +151,34 @@ Item {
       return;
     }
 
-    // Get all features from the layer
-    const features = testPipesLayer.getFeatures();
-    if (!features || features.length === 0) {
-      logMsg('No features found in test_pipes layer');
-      return;
-    }
-
     // Reset pipe features array
     pipeFeatures = [];
     
-    // Loop through all features and add them to the pipeFeatures array
-    for (let i = 0; i < features.length; i++) {
-      const feature = features[i];
-      if (feature && feature.geometry) {
+    // Try to get features by ID, starting from 0
+    // Since we don't know how many features there are, we'll try a reasonable number
+    let featuresFound = 0;
+    for (let i = 0; i < 10; i++) {
+      const featureId = i.toString();
+      const feature = testPipesLayer.getFeature(featureId);
+      
+      if (!feature) {
+        continue; // Skip if feature doesn't exist
+      }
+      
+      if (feature.geometry) {
         pipeFeatures.push({
           geometry: feature.geometry,
           id: feature.id
         });
-        logMsg(`Loaded feature ${feature.id}`);
+        featuresFound++;
+        logMsg("Loaded feature " + feature.id);
       }
     }
     
-    if (pipeFeatures.length === 0) {
+    if (featuresFound === 0) {
       logMsg('No valid features found with geometry');
     } else {
-      logMsg(`Loaded ${pipeFeatures.length} pipe features`);
+      logMsg("Loaded " + featuresFound + " pipe features");
     }
   }
 
@@ -240,6 +242,11 @@ Item {
   }
 
   function initLayer() {
+    // Log QML version info for debugging
+    if (typeof Qt !== 'undefined') {
+      logMsg("Qt: " + Qt.version + " | QML running in QField");
+    }
+    
     logMsg("Initializing test_pipes layer");
     testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0];
     
@@ -270,19 +277,18 @@ Item {
   function debugGeometryProperties() {
     if (!testPipesLayer) return;
     
-    // Get all features
-    const features = testPipesLayer.getFeatures();
-    if (!features || features.length === 0) {
-      logMsg("No features found in layer");
-      return;
-    }
+    logMsg("Analyzing features in test_pipes layer");
     
-    // Loop through each feature and debug its properties
-    for (let i = 0; i < features.length; i++) {
-      const feature = features[i];
-      if (!feature || !feature.geometry) {
-        continue;
-      }
+    // Try features with IDs 0-9
+    let featuresFound = 0;
+    for (let i = 0; i < 10; i++) {
+      const featureId = i.toString();
+      const feature = testPipesLayer.getFeature(featureId);
+      
+      if (!feature) continue;
+      if (!feature.geometry) continue;
+      
+      featuresFound++;
       
       // Create a geometry wrapper instance
       let wrapper = geometryWrapperComponentGlobal.createObject(null, {
@@ -314,6 +320,10 @@ Item {
       
       // Clean up the wrapper
       wrapper.destroy();
+    }
+    
+    if (featuresFound === 0) {
+      logMsg("No features found for analysis");
     }
   }
 
