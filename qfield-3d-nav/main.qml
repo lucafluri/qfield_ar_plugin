@@ -75,9 +75,60 @@ Item {
     logMsg('Loaded ' + pipeFeatures.length + ' pipe features')
   }
 
+  function logPipeDistances() {
+    if (!testPipesLayer || !pipeFeatures || pipeFeatures.length === 0) {
+      logMsg("Cannot calculate distances - pipe features not loaded");
+      return;
+    }
+
+    // Component for creating geometry wrappers
+    const geometryWrapperComponent = Qt.createComponent("QgsGeometryWrapper.qml");
+    if (geometryWrapperComponent.status !== Component.Ready) {
+      logMsg("Failed to create geometry wrapper component");
+      return;
+    }
+
+    for (let i = 0; i < pipeFeatures.length; i++) {
+      const feature = pipeFeatures[i];
+      const wrapper = geometryWrapperComponent.createObject(null, {
+        qgsGeometry: feature.geometry,
+        crs: testPipesLayer.crs
+      });
+      
+      if (wrapper) {
+        const pointList = wrapper.pointList();
+        if (pointList && pointList.length > 0) {
+          // Calculate distance to first point of the feature
+          const dx = pointList[0].x() - currentPosition[0];
+          const dy = pointList[0].y() - currentPosition[1];
+          const dz = (pointList[0].z() || 0) - currentPosition[2];
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          
+          logMsg("Distance to feature " + feature.id + " (first point): " + dist.toFixed(2) + " m");
+          
+          // If there are multiple points, also calculate distance to last point
+          if (pointList.length > 1) {
+            const lastPoint = pointList[pointList.length - 1];
+            const dx2 = lastPoint.x() - currentPosition[0];
+            const dy2 = lastPoint.y() - currentPosition[1];
+            const dz2 = (lastPoint.z() || 0) - currentPosition[2];
+            const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
+            
+            logMsg("Distance to feature " + feature.id + " (last point): " + dist2.toFixed(2) + " m");
+          }
+        } else {
+          logMsg("No points found for feature " + feature.id);
+        }
+        wrapper.destroy();
+      } else {
+        logMsg("Failed to create geometry wrapper for feature " + feature.id);
+      }
+    }
+  }
+
   function initLayer() {
     // logMsg("=== initLayer() ===")
-    // testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
+    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
     // logMsg("Pipe Layer: " + (testPipesLayer ? testPipesLayer.name : "not found")) 
 
     if (testPipesLayer) {
@@ -88,6 +139,7 @@ Item {
     }
 
     loadPipeFeatures();
+    logPipeDistances();
 
     return
   }
@@ -95,18 +147,6 @@ Item {
   Component.onCompleted: {
     iface.addItemToPluginsToolbar(pluginButton);
     Qt.callLater(initLayer);
-
-    // Add a fake pipe for debugging
-    pipeFeatures.push({
-      geometry: {
-        type: "LineString",
-        coordinates: [
-          [plugin.currentPosition[0], plugin.currentPosition[1] + 10],
-          [plugin.currentPosition[0], plugin.currentPosition[1] + 20]
-        ]
-      },
-      id: "fakePipe"
-    });
   }
 
   //----------------------------------
@@ -150,6 +190,11 @@ Item {
 
         gpsPositionText.text = 'GPS Position: ' + x + ', ' + y
         gpsAccuracyText.text = 'Accuracy: ' + positionSource.supportedPositioningMethods
+        
+        // Update distances to pipe features when position changes
+        if (threeDNavigationPopup.visible && testPipesLayer && pipeFeatures.length > 0) {
+          logPipeDistances();
+        }
       }
     }
   }
