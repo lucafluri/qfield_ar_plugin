@@ -57,7 +57,7 @@ Item {
                   const coordPairs = coordsText.split(",");
                   
                   if (coordPairs.length > 0) {
-                    logMsg("WKT parser found " + coordPairs.length + " points");
+                    logMsg("WKT parser found " + coordPairs.length + " points in LineString");
                     
                     return coordPairs.map(function(pair) {
                       const coords = pair.trim().split(" ");
@@ -71,22 +71,106 @@ Item {
                 }
                 // Parse MultiLineString WKT: MULTILINESTRING((x1 y1, x2 y2), (x3 y3, x4 y4))
                 else if (wkt.startsWith("MULTILINESTRING")) {
-                  // Extract the first linestring
-                  const multiLine = wkt.substring(wkt.indexOf("(") + 1, wkt.lastIndexOf(")"));
-                  const firstLine = multiLine.substring(multiLine.indexOf("(") + 1, multiLine.indexOf(")"));
-                  const coordPairs = firstLine.split(",");
+                  logMsg("Processing MultiLineString WKT");
                   
-                  if (coordPairs.length > 0) {
-                    logMsg("WKT parser found " + coordPairs.length + " points in first part of multilinestring");
+                  try {
+                    // Get the content between the outer parentheses: ((x1 y1, x2 y2), (x3 y3, x4 y4))
+                    const multiLineContent = wkt.substring(wkt.indexOf("(") + 1, wkt.lastIndexOf(")"));
                     
-                    return coordPairs.map(function(pair) {
-                      const coords = pair.trim().split(" ");
-                      return {
-                        x: parseFloat(coords[0]),
-                        y: parseFloat(coords[1]),
-                        z: coords.length > 2 ? parseFloat(coords[2]) : 0
-                      };
-                    });
+                    // Find all individual linestrings (content between inner parentheses)
+                    let lineStrings = [];
+                    let openParenCount = 0;
+                    let currentLine = "";
+                    
+                    for (let i = 0; i < multiLineContent.length; i++) {
+                      const char = multiLineContent.charAt(i);
+                      
+                      if (char === '(') {
+                        openParenCount++;
+                        if (openParenCount === 1) {
+                          // Start of a new linestring
+                          currentLine = "";
+                        } else {
+                          currentLine += char;
+                        }
+                      } 
+                      else if (char === ')') {
+                        openParenCount--;
+                        if (openParenCount === 0) {
+                          // End of a linestring
+                          lineStrings.push(currentLine);
+                        } else {
+                          currentLine += char;
+                        }
+                      }
+                      else {
+                        currentLine += char;
+                      }
+                    }
+                    
+                    logMsg("Found " + lineStrings.length + " linestrings in MultiLineString");
+                    
+                    // If we have at least one linestring, parse the first one
+                    if (lineStrings.length > 0) {
+                      const firstLine = lineStrings[0];
+                      const coordPairs = firstLine.split(",");
+                      
+                      logMsg("First linestring has " + coordPairs.length + " points");
+                      
+                      if (coordPairs.length > 0) {
+                        return coordPairs.map(function(pair) {
+                          const coords = pair.trim().split(" ");
+                          return {
+                            x: parseFloat(coords[0]),
+                            y: parseFloat(coords[1]),
+                            z: coords.length > 2 ? parseFloat(coords[2]) : 0
+                          };
+                        });
+                      }
+                    }
+                  } catch (e) {
+                    logMsg("Advanced MultiLineString parsing error: " + e);
+                    
+                    // Fallback to simpler parsing method
+                    try {
+                      // Find position of first inner opening parenthesis
+                      const firstOpenParen = multiLineContent.indexOf("(");
+                      if (firstOpenParen >= 0) {
+                        // Find matching closing parenthesis
+                        let openCount = 1;
+                        let closePos = -1;
+                        
+                        for (let i = firstOpenParen + 1; i < multiLineContent.length; i++) {
+                          if (multiLineContent.charAt(i) === '(') openCount++;
+                          if (multiLineContent.charAt(i) === ')') openCount--;
+                          
+                          if (openCount === 0) {
+                            closePos = i;
+                            break;
+                          }
+                        }
+                        
+                        if (closePos > 0) {
+                          const firstLineString = multiLineContent.substring(firstOpenParen + 1, closePos);
+                          const coordPairs = firstLineString.split(",");
+                          
+                          logMsg("Fallback method found " + coordPairs.length + " points");
+                          
+                          if (coordPairs.length > 0) {
+                            return coordPairs.map(function(pair) {
+                              const coords = pair.trim().split(" ");
+                              return {
+                                x: parseFloat(coords[0]),
+                                y: parseFloat(coords[1]),
+                                z: coords.length > 2 ? parseFloat(coords[2]) : 0
+                              };
+                            });
+                          }
+                        }
+                      }
+                    } catch (e2) {
+                      logMsg("Fallback MultiLineString parsing also failed: " + e2);
+                    }
                   }
                 }
               }
