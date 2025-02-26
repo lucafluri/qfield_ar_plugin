@@ -131,19 +131,11 @@ Item {
 
     // 2) Also store in pipe_text so it appears in the UI
     pipe_text += "\n" + msg
-    
-    // 3) Prevent pipe_text from growing too large
-    // Keep only the last ~10000 characters (roughly 200 lines)
-    const maxLength = 10000;
-    if (pipe_text.length > maxLength) {
-      // Find the position after the first newline in the second half of the text
-      const startPos = pipe_text.indexOf("\n", pipe_text.length - maxLength);
-      if (startPos >= 0) {
-        pipe_text = "...\n[Older logs trimmed]\n..." + pipe_text.substring(startPos);
-      } else {
-        // Fallback - just cut at maxLength
-        pipe_text = "...\n[Older logs trimmed]\n..." + pipe_text.substring(pipe_text.length - maxLength);
-      }
+
+    // 3) Keep only the last 10 lines to ensure all are visible
+    const lines = pipe_text.split("\n");
+    if (lines.length > 10) {
+      pipe_text = lines.slice(-10).join("\n");
     }
   }
 
@@ -776,51 +768,30 @@ Item {
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
       anchors.right: parent.right
-      // Use bottom of parent with margin to avoid covering other elements
-      anchors.bottom: tiltReadingText.top
       anchors.margins: 5
-      height: parent.height / 3  // Take 1/3 of the screen height
+      height: font.pixelSize * 10  // Approximately 8-10 lines of text
       color: "black"
       opacity: 0.5
       radius: 5
       z: 100  // Ensure it's on top of other elements
       
-      Flickable {
-        id: debugFlickable
+      TextArea { 
+        id: debugTextArea
         anchors.fill: parent
         anchors.margins: 2
-        contentWidth: debugTextArea.width
-        contentHeight: debugTextArea.height
+        text: pipe_text
+        font: Theme.defaultFont
+        color: "white"
+        readOnly: true
+        wrapMode: TextEdit.Wrap
         clip: true
-        
-        // Add a ScrollBar
-        ScrollBar.vertical: ScrollBar {
-          id: vScrollBar
-          active: true
-          visible: debugFlickable.contentHeight > debugFlickable.height
+        background: Rectangle {
+          color: "transparent"
         }
         
-        TextArea { 
-          id: debugTextArea
-          width: debugFlickable.width
-          height: Math.max(debugFlickable.height, implicitHeight)
-          text: pipe_text
-          font: Theme.defaultFont
-          color: "white"
-          readOnly: true
-          wrapMode: TextEdit.Wrap
-          background: Rectangle {
-            color: "transparent"
-          }
-          
-          // Auto-scroll to bottom when new content is added
-          onTextChanged: {
-            cursorPosition = text.length
-            // Ensure the cursor/newest text is visible
-            Qt.callLater(function() {
-              debugFlickable.contentY = debugFlickable.contentHeight - debugFlickable.height
-            })
-          }
+        // Auto-scroll to bottom when new content is added
+        onTextChanged: {
+          cursorPosition = text.length
         }
       }
     }
