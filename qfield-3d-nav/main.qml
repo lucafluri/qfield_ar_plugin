@@ -32,7 +32,8 @@ Item {
   property var currentPosition: [0, 0, 0]
   property double currentOrientation: 0
   property double currentTilt: 90
-
+  property string debugLogText: ""  // Add property for debug log text
+  
   property var pipeFeatures: []
   
   // Global component for geometry handling
@@ -911,8 +912,25 @@ Item {
       anchors.margins: 10
       text: "Debug"
       onClicked: {
-        logMsg("Debug button pressed");
-        debugGeometryProperties();
+        logMsg("===== DEBUG BUTTON PRESSED =====");
+        
+        // Clear previous log
+        plugin.debugLogText = "";
+        
+        // Initialize layer if needed
+        if (!testPipesLayer) {
+          initLayer();
+        }
+        
+        // Load pipe features
+        loadPipeFeatures();
+        
+        // Calculate distances
+        if (pipeFeatures && pipeFeatures.length > 0) {
+          logPipeDistances();
+        } else {
+          logMsg("No pipe features loaded to analyze");
+        }
       }
     }
 
@@ -950,11 +968,13 @@ Item {
       id: debugLogText
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
-      text: pipe_text
+      text: plugin.debugLogText  // Use the new property
       font: Theme.defaultFont
       color: "yellow"  // Make debug logs stand out with a different color
       wrapMode: Text.Wrap
       width: parent.width - 10  // Allow some margin
+      height: parent.height - y - 10  // Set height to allow scrolling
+      clip: true  // Prevent text from overflowing
     }
 
     //----------------------------------
@@ -1044,9 +1064,31 @@ Item {
     }
   }
 
-  Component.onCompleted: {
-    iface.addItemToPluginsToolbar(pluginButton);
-    Qt.callLater(initLayer);
+  // Initialize the test_pipes layer
+  function initLayer() {
+    logMsg("Initializing test_pipes layer");
+    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0];
+    
+    if (!testPipesLayer) {
+      logMsg("WARNING: test_pipes layer not found in project");
+      return;
+    }
+    
+    logMsg("Found test_pipes layer: " + testPipesLayer.name);
+    
+    // Display CRS information
+    if (testPipesLayer.crs) {
+      logMsg("Layer CRS: " + testPipesLayer.crs.authid);
+    } else {
+      logMsg("Layer has no CRS information");
+    }
   }
-
+  
+  // Initialize when plugin loads
+  Component.onCompleted: {
+    logMsg("QField 3D Navigation Plugin v1.06 loaded");
+    
+    // Try to initialize the test_pipes layer
+    initLayer();
+  }
 }
