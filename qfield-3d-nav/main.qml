@@ -702,29 +702,76 @@ Item {
                   "qgsGeometry": modelData.geometry,
                   "crs": plugin.testPipesLayer.crs
                 });
+                
                 if (wrapper) {
-                  let vertices = wrapper.getVerticesAsArray();
-                  if (vertices && vertices.length > 0) {
-                    // Compute distance from plugin.currentPosition to the first point
-                    let dx = vertices[0].x - plugin.currentPosition[0];
-                    let dy = vertices[0].y - plugin.currentPosition[1];
-                    let dz = (vertices[0].z || 0) - plugin.currentPosition[2];
-                    let dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                    logMsg("Distance for feature " + modelData.id + ": " + dist.toFixed(2));
-                    // Populate pos array from all geometry points
-                    for (let i = 0; i < vertices.length; ++i) {
-                      pos.push([
-                        vertices[i].x - plugin.currentPosition[0],
-                        vertices[i].y - plugin.currentPosition[1],
-                        vertices[i].z || 0
-                      ]);
+                  try {
+                    let vertices = wrapper.getVerticesAsArray();
+                    
+                    if (vertices && vertices.length > 0) {
+                      // Log information about the vertices for debugging
+                      console.log("Feature " + modelData.id + " has " + vertices.length + " vertices");
+                      
+                      // Compute distance from plugin.currentPosition to the first point
+                      let dx = vertices[0].x - plugin.currentPosition[0];
+                      let dy = vertices[0].y - plugin.currentPosition[1];
+                      let dz = (vertices[0].z || 0) - plugin.currentPosition[2];
+                      let dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                      
+                      // Populate pos array from all geometry points
+                      for (let i = 0; i < vertices.length; ++i) {
+                        pos.push([
+                          vertices[i].x - plugin.currentPosition[0],
+                          vertices[i].y - plugin.currentPosition[1],
+                          vertices[i].z || 0
+                        ]);
+                      }
+                      
+                      // If there are too few points, it might be a MultiLineString with only the first part extracted
+                      // Let's try to get the WKT and parse it manually if needed
+                      if (vertices.length < 2 && modelData.geometry.asWkt) {
+                        try {
+                          const wkt = modelData.geometry.asWkt();
+                          
+                          // Check if it's a MultiLineString
+                          if (wkt.startsWith("MultiLineString")) {
+                            console.log("Attempting manual MultiLineString parsing for feature " + modelData.id);
+                            
+                            // Extract all coordinate pairs from the WKT
+                            const regex = /(-?\d+\.?\d*)\s+(-?\d+\.?\d*)/g;
+                            let match;
+                            let allPoints = [];
+                            
+                            while ((match = regex.exec(wkt)) !== null) {
+                              const x = parseFloat(match[1]);
+                              const y = parseFloat(match[2]);
+                              
+                              // Add to our points array, relative to current position
+                              allPoints.push([
+                                x - plugin.currentPosition[0],
+                                y - plugin.currentPosition[1],
+                                0 // No Z value in WKT
+                              ]);
+                            }
+                            
+                            if (allPoints.length > 0) {
+                              console.log("Extracted " + allPoints.length + " points from WKT");
+                              pos = allPoints; // Replace the pos array with our manually extracted points
+                            }
+                          }
+                        } catch (e) {
+                          console.error("Error parsing WKT for feature " + modelData.id + ": " + e);
+                        }
+                      }
+                    } else {
+                      console.error("Failed to get valid vertices for feature " + modelData.id);
                     }
-                  } else {
-                    console.error("Failed to get valid vertices for feature", modelData.id);
+                  } catch (e) {
+                    console.error("Error processing vertices for feature " + modelData.id + ": " + e);
                   }
+                  
                   wrapper.destroy();
                 } else {
-                  console.error("Failed to create geometry wrapper for feature", modelData.id);
+                  console.error("Failed to create geometry wrapper for feature " + modelData.id);
                 }
 
                 // Generate vertices and normals
@@ -1087,6 +1134,9 @@ Item {
   // Initialize when plugin loads
   Component.onCompleted: {
     logMsg("QField 3D Navigation Plugin v1.06 loaded");
+    
+    // Add plugin button to toolbar
+    iface.addItemToPluginsToolbar(pluginButton);
     
     // Try to initialize the test_pipes layer
     initLayer();
