@@ -146,14 +146,13 @@ Item {
   }
 
   //----------------------------------
-  // Helper for toast + text fallback
+  // Enhanced logging system
   //----------------------------------
   function logMsg(msg) {
-    // 1) Show toast inside QField
-    iface.mainWindow().displayToast(msg, 3)
-
-    // 2) Format as a scrolling line of text
-    // If the pipe_text is empty, just use the message
+    // Log to QField's message log (visible in the message panel)
+    iface.messageLog("QField 3D Nav: " + msg);
+    
+    // Also add to a scrolling text overlay for immediate visibility
     if (pipe_text === "") {
       pipe_text = msg;
     } else {
@@ -298,6 +297,14 @@ Item {
   // Function to debug geometry properties
   function debugGeometryProperties() {
     if (!testPipesLayer) return;
+    
+    logMsg("=====================================================");
+    logMsg("STARTING COMPREHENSIVE FEATURE ANALYSIS");
+    logMsg("QField Version: " + iface.version);
+    logMsg("Layer name: " + testPipesLayer.name);
+    logMsg("CRS: " + testPipesLayer.crs);
+    logMsg("Feature count: " + testPipesLayer.featureCount);
+    logMsg("=====================================================");
     
     logMsg("Analyzing features in test_pipes layer");
     
@@ -783,9 +790,22 @@ Item {
       iconSource: Theme.getThemeVectorIcon('ic_close_white_24dp')
       iconColor: "White"
       bgcolor: Theme.darkGray
-
       onClicked: {
         threeDNavigationPopup.close()
+      }
+    }
+    
+    //----------------------------------
+    // Debug button
+    //----------------------------------
+    Button {
+      anchors.right: parent.right
+      anchors.bottom: parent.bottom
+      anchors.margins: 10
+      text: "Debug"
+      onClicked: {
+        logMsg("Debug button pressed");
+        debugGeometryProperties();
       }
     }
 
