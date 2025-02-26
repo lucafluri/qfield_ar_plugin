@@ -131,6 +131,20 @@ Item {
 
     // 2) Also store in pipe_text so it appears in the UI
     pipe_text += "\n" + msg
+    
+    // 3) Prevent pipe_text from growing too large
+    // Keep only the last ~10000 characters (roughly 200 lines)
+    const maxLength = 10000;
+    if (pipe_text.length > maxLength) {
+      // Find the position after the first newline in the second half of the text
+      const startPos = pipe_text.indexOf("\n", pipe_text.length - maxLength);
+      if (startPos >= 0) {
+        pipe_text = "...\n[Older logs trimmed]\n..." + pipe_text.substring(startPos);
+      } else {
+        // Fallback - just cut at maxLength
+        pipe_text = "...\n[Older logs trimmed]\n..." + pipe_text.substring(pipe_text.length - maxLength);
+      }
+    }
   }
 
   function loadPipeFeatures() {
@@ -757,13 +771,38 @@ Item {
       color: "white"
     }
 
-    Text {
-      id: pipeSegmentsText
+    ScrollView {
+      id: debugScrollView
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
-      text: pipe_text
-      font: Theme.defaultFont
-      color: "white"
+      anchors.right: parent.right
+      anchors.bottom: parent.bottom
+      anchors.margins: 5
+      height: Math.min(parent.height / 3, 200)  // Take up to 1/3 of the screen or 200px
+      clip: true
+      
+      TextArea {
+        id: debugTextArea
+        text: pipe_text
+        font: Theme.defaultFont
+        color: "white"
+        readOnly: true
+        wrapMode: TextEdit.Wrap
+        background: Rectangle {
+          color: "black"
+          opacity: 0.5
+          radius: 5
+        }
+        
+        // Auto-scroll to bottom when new content is added
+        onTextChanged: {
+          cursorPosition = text.length
+          // Ensure the cursor/newest text is visible
+          Qt.callLater(function() {
+            debugScrollView.ScrollBar.vertical.position = 1.0
+          })
+        }
+      }
     }
 
     //----------------------------------
