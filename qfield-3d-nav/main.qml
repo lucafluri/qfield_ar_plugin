@@ -85,7 +85,7 @@ Item {
                     for (let i = 0; i < multiLineContent.length; i++) {
                       const char = multiLineContent.charAt(i);
                       
-                      if (char === '(') {
+                      if (char === "(") {
                         openParenCount++;
                         if (openParenCount === 1) {
                           // Start of a new linestring
@@ -94,7 +94,7 @@ Item {
                           currentLine += char;
                         }
                       } 
-                      else if (char === ')') {
+                      else if (char === ")") {
                         openParenCount--;
                         if (openParenCount === 0) {
                           // End of a linestring
@@ -141,8 +141,8 @@ Item {
                         let closePos = -1;
                         
                         for (let i = firstOpenParen + 1; i < multiLineContent.length; i++) {
-                          if (multiLineContent.charAt(i) === '(') openCount++;
-                          if (multiLineContent.charAt(i) === ')') openCount--;
+                          if (multiLineContent.charAt(i) === "(") openCount++;
+                          if (multiLineContent.charAt(i) === ")") openCount--;
                           
                           if (openCount === 0) {
                             closePos = i;
@@ -233,28 +233,113 @@ Item {
   // Enhanced logging system
   //----------------------------------
   function logMsg(msg) {
-    // Log to QField's message log
-    iface.logMessage("[QField 3D Nav] " + msg);
+    let timestamp = new Date().toLocaleTimeString();
+    if (iface && iface.logMessage) {
+      iface.logMessage("[3D Nav] " + msg);
+    }
     
-    // Also log to console for developer debugging
-    console.log("[QField 3D Nav] " + msg);
+    // Also log to console for QField development builds
+    console.log("[3D Nav] " + msg);
     
-    // Show toast with shorter duration for immediate feedback
-    iface.mainWindow().displayToast(msg, 3);
+    // Also display in the overlay
+    plugin.debugLogText += timestamp + ": " + msg + "\n";
     
-    // Also add to the debug text overlay for persistent visibility
-    if (pipe_text === "") {
-      pipe_text = msg;
-    } else {
-      // Add the new message to the end
-      pipe_text = pipe_text + "\n" + msg;
-      
-      // Keep only the last 15 messages to ensure it doesn't get too long
-      const messages = pipe_text.split("\n");
-      if (messages.length > 15) {
-        pipe_text = messages.slice(-15).join("\n");
+    // Keep log at a manageable size - trim if too long
+    if (plugin.debugLogText.length > 10000) {
+      let lines = plugin.debugLogText.split('\n');
+      if (lines.length > 100) {
+        lines = lines.slice(lines.length - 100);
+        plugin.debugLogText = lines.join('\n');
       }
     }
+  }
+  
+  // Advanced geometry analysis function for debugging
+  function analyzeGeometry(geometry) {
+    if (!geometry) {
+      logMsg("ERROR: Null geometry provided to analyzeGeometry");
+      return;
+    }
+    
+    // Log basic geometry properties
+    logMsg("Geometry analysis:");
+    logMsg("- Type: " + geometry.type);
+    
+    // Try different methods to extract geometry data
+    if (geometry.asWkt) {
+      try {
+        const wkt = geometry.asWkt();
+        logMsg("- WKT available: " + (wkt ? "Yes" : "No"));
+        if (wkt) {
+          logMsg("- WKT length: " + wkt.length);
+          const wktType = wkt.substring(0, wkt.indexOf('('));
+          logMsg("- WKT type: " + wktType.trim());
+          
+          // Advanced WKT analysis based on type
+          if (wkt.startsWith("MultiLineString")) {
+            logMsg("- Detected MultiLineString in WKT");
+            // Count number of linestrings in MultiLineString
+            let count = 0;
+            let pos = 0;
+            while ((pos = wkt.indexOf("(", pos + 1)) !== -1) {
+              if (wkt.charAt(pos-1) === '(' || wkt.charAt(pos-1) === ',') {
+                count++;
+              }
+            }
+            logMsg("- Contains approximately " + count + " linestrings");
+          } else if (wkt.startsWith("LineString")) {
+            logMsg("- Detected LineString in WKT");
+            // Count vertices in LineString
+            const coordPairs = wkt.substring(wkt.indexOf('(') + 1, wkt.lastIndexOf(')')).split(',');
+            logMsg("- Contains approximately " + coordPairs.length + " vertices");
+          }
+        }
+      } catch (e) {
+        logMsg("- Error getting WKT: " + e.toString());
+      }
+    } else {
+      logMsg("- WKT method not available");
+    }
+    
+    // Try to create a wrapper and get vertices
+    try {
+      let wrapper = geometryWrapperComponentGlobal.createObject(null, {
+        "qgsGeometry": geometry,
+        "crs": testPipesLayer ? testPipesLayer.crs : null
+      });
+      
+      if (wrapper) {
+        logMsg("- Wrapper created successfully");
+        try {
+          const vertices = wrapper.getVerticesAsArray();
+          logMsg("- Vertices array available: " + (vertices ? "Yes" : "No"));
+          if (vertices) {
+            logMsg("- Vertex count: " + vertices.length);
+            if (vertices.length > 0) {
+              // Log first vertex
+              logMsg("- First vertex: [" + vertices[0].x + ", " + vertices[0].y + 
+                    (vertices[0].z ? ", " + vertices[0].z : ", NULL") + "]");
+              
+              // Log last vertex if more than one
+              if (vertices.length > 1) {
+                const last = vertices[vertices.length - 1];
+                logMsg("- Last vertex: [" + last.x + ", " + last.y + 
+                      (last.z ? ", " + last.z : ", NULL") + "]");
+              }
+            }
+          }
+        } catch (e) {
+          logMsg("- Error getting vertices: " + e.toString());
+        }
+        wrapper.destroy();
+      } else {
+        logMsg("- Failed to create geometry wrapper");
+      }
+    } catch (e) {
+      logMsg("- Exception during wrapper creation: " + e.toString());
+    }
+    
+    logMsg("Geometry analysis complete");
   }
 
   function loadPipeFeatures() {
@@ -269,7 +354,9 @@ Item {
     // Try to get features by ID, starting from 0
     // Since we don't know how many features there are, we'll try a reasonable number
     let featuresFound = 0;
-    for (let i = 0; i < 3; i++) {
+    logMsg("Attempting to load features from layer: " + testPipesLayer.name);
+    
+    for (let i = 0; i < 10; i++) {
       const featureId = i.toString();
       const feature = testPipesLayer.getFeature(featureId);
       
@@ -278,12 +365,20 @@ Item {
       }
       
       if (feature.geometry) {
+        logMsg("Found feature " + featureId + " with geometry");
+        
+        // Perform detailed geometry analysis
+        analyzeGeometry(feature.geometry);
+        
         pipeFeatures.push({
           geometry: feature.geometry,
           id: feature.id
         });
+        
         featuresFound++;
-        logMsg("Loaded feature " + feature.id);
+        logMsg("Loaded feature " + feature.id + " successfully");
+      } else {
+        logMsg("Feature " + featureId + " exists but has no geometry");
       }
     }
     
@@ -300,23 +395,30 @@ Item {
       return;
     }
     
+    logMsg("===== Calculating distances to pipe features =====");
+    
     for (let i = 0; i < pipeFeatures.length; i++) {
       try {
         const feature = pipeFeatures[i];
         
-        // Use the same approach as in the Repeater3D delegate
         logMsg("Processing feature: " + feature.id);
+        
+        // Perform detailed geometry analysis first
+        analyzeGeometry(feature.geometry);
         
         // Create a geometry wrapper instance
         let wrapper = geometryWrapperComponentGlobal.createObject(null, {
           "qgsGeometry": feature.geometry,
           "crs": testPipesLayer.crs
         });
+        
         if (wrapper) {
           logMsg("Created wrapper for feature: " + feature.id);
           try {
             const vertices = wrapper.getVerticesAsArray();
             if (vertices && vertices.length > 0) {
+              logMsg("Successfully extracted " + vertices.length + " vertices");
+              
               // Calculate distance to first point of the feature
               const dx = vertices[0].x - currentPosition[0];
               const dy = vertices[0].y - currentPosition[1];
@@ -334,171 +436,86 @@ Item {
                 const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
                 
                 logMsg("Distance to feature " + feature.id + " (last point): " + dist2.toFixed(2) + " m");
+                
+                // Calculate the closest point on the line if there are multiple vertices
+                let minDist = dist;
+                let closestSegment = 0;
+                
+                for (let j = 0; j < vertices.length - 1; j++) {
+                  // Simple line segment distance calculation
+                  // This is simplified and doesn't handle projection issues
+                  const p1 = vertices[j];
+                  const p2 = vertices[j + 1];
+                  
+                  // Find closest point on line segment
+                  const segmentDist = calculateDistanceToLineSegment(
+                    currentPosition, 
+                    [p1.x, p1.y, p1.z || 0], 
+                    [p2.x, p2.y, p2.z || 0]
+                  );
+                  
+                  if (segmentDist < minDist) {
+                    minDist = segmentDist;
+                    closestSegment = j;
+                  }
+                }
+                
+                logMsg("Closest approach to feature " + feature.id + ": " + minDist.toFixed(2) + " m (segment " + closestSegment + ")");
               }
             } else {
-              logMsg("No vertices found for feature: " + feature.id);
+              logMsg("No vertices found for feature " + feature.id);
             }
           } catch (e) {
-            logMsg("Error calculating distance for feature " + feature.id + ": " + e);
+            logMsg("Error while getting vertices for feature " + feature.id + ": " + e.toString());
           }
           
           wrapper.destroy();
         } else {
-          logMsg("Failed to create geometry wrapper for feature: " + feature.id);
+          logMsg("Failed to create wrapper for feature " + feature.id);
         }
       } catch (e) {
-        logMsg("Error processing feature: " + e);
+        logMsg("Error while processing feature: " + e.toString());
       }
     }
-  }
-
-  function initLayer() {
-    // Log QML version info for debugging
-    if (typeof Qt !== 'undefined') {
-      logMsg("Qt: " + Qt.version + " | QML running in QField");
-    }
     
-    logMsg("Initializing test_pipes layer");
-    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0];
-    
-    if (!testPipesLayer) {
-      logMsg("Warning: test_pipes layer not found");
-      return;
-    }
-    
-    logMsg("Found test_pipes layer: " + testPipesLayer.name);
-    
-    // Display CRS information to help with debugging
-    logMsg("Layer CRS: " + testPipesLayer.crs.authid);
-    
-    // Debug geometry properties to provide more information
-    debugGeometryProperties();
-    
-    // Load all pipe features
-    loadPipeFeatures();
-    
-    // Calculate and log distances to pipe features
-    if (pipeFeatures && pipeFeatures.length > 0) {
-      logMsg("Calculating distances to pipe features...");
-      logPipeDistances();
-    }
+    logMsg("===== Distance calculation complete =====");
   }
   
-  // Function to debug geometry properties
-  function debugGeometryProperties() {
-    if (!testPipesLayer) return;
+  // Helper function to calculate distance from a point to a line segment
+  function calculateDistanceToLineSegment(point, lineStart, lineEnd) {
+    // Vectors
+    const v = [lineEnd[0] - lineStart[0], lineEnd[1] - lineStart[1], lineEnd[2] - lineStart[2]];
+    const w = [point[0] - lineStart[0], point[1] - lineStart[1], point[2] - lineStart[2]];
     
-    logMsg("=====================================================");
-    logMsg("STARTING COMPREHENSIVE FEATURE ANALYSIS");
-    logMsg("QField Version: " + iface.version);
-    logMsg("Layer name: " + testPipesLayer.name);
-    logMsg("CRS: " + testPipesLayer.crs);
-    logMsg("Feature count: " + testPipesLayer.featureCount);
-    logMsg("=====================================================");
+    // Squared length of line segment
+    const c1 = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
     
-    logMsg("Analyzing features in test_pipes layer");
-    
-    // Try features with IDs 0-9
-    let featuresFound = 0;
-    for (let i = 0; i < 10; i++) {
-      const featureId = i.toString();
-      const feature = testPipesLayer.getFeature(featureId);
-      
-      if (!feature) continue;
-      if (!feature.geometry) continue;
-      
-      featuresFound++;
-      logMsg("Found feature " + featureId + ", analyzing geometry...");
-      
-      // Log geometry type and properties
-      const geomType = feature.geometry.type;
-      logMsg("Geometry type: " + geomType);
-      
-      // Check if this is a valid geometry for a pipe (should be LineString)
-      if (geomType !== 'LineString') {
-        logMsg("WARNING: Feature " + featureId + " is not a LineString! It's a " + geomType);
-      }
-      
-      // Create a manual WKT parser to extract vertices
-      if (feature.geometry.asWkt) {
-        try {
-          const wkt = feature.geometry.asWkt();
-          logMsg("WKT: " + wkt);
-          
-          // If it's a LINESTRING, try to parse it manually
-          if (wkt.startsWith("LINESTRING")) {
-            // Extract points from WKT: LINESTRING(x1 y1, x2 y2)
-            const coordsText = wkt.substring(wkt.indexOf("(") + 1, wkt.lastIndexOf(")"));
-            const coordPairs = coordsText.split(",");
-            
-            logMsg("Found " + coordPairs.length + " coordinate pairs in WKT");
-            
-            if (coordPairs.length > 0) {
-              // Log the first and last points
-              const firstPair = coordPairs[0].trim().split(" ");
-              logMsg("First WKT point: (" + firstPair[0] + ", " + firstPair[1] + ")");
-              
-              if (coordPairs.length > 1) {
-                const lastPair = coordPairs[coordPairs.length-1].trim().split(" ");
-                logMsg("Last WKT point: (" + lastPair[0] + ", " + lastPair[1] + ")");
-              }
-            }
-          }
-        } catch (e) {
-          logMsg("Error parsing WKT: " + e);
-        }
-      } else {
-        logMsg("No asWkt method available on geometry");
-      }
-      
-      // Create a geometry wrapper instance
-      let wrapper = geometryWrapperComponentGlobal.createObject(null, {
-        "qgsGeometry": feature.geometry,
-        "crs": testPipesLayer.crs
-      });
-      if (!wrapper) {
-        logMsg("Failed to create geometry wrapper");
-        continue;
-      }
-      
-      // Try different ways to access vertices
-      if (wrapper.qgsGeometry.asGeoJson) {
-        try {
-          const geoJson = wrapper.qgsGeometry.asGeoJson();
-          logMsg("GeoJSON: " + geoJson);
-        } catch (e) {
-          logMsg("Error getting GeoJSON: " + e);
-        }
-      }
-      
-      // Get the vertices from the geometry
-      const vertices = wrapper.getVerticesAsArray();
-      if (!vertices || vertices.length === 0) {
-        logMsg("No vertices found using wrapper.getVerticesAsArray()");
-        wrapper.destroy();
-        continue;
-      }
-      
-      // Log information about the vertices
-      logMsg("Feature " + featureId + " has " + vertices.length + " vertices");
-      
-      // Log the first vertex
-      const firstPoint = vertices[0];
-      logMsg("First vertex: (" + firstPoint.x.toFixed(2) + ", " + firstPoint.y.toFixed(2) + ", " + (firstPoint.z || 0).toFixed(2) + ")");
-      
-      // Log the last vertex if there is more than one
-      if (vertices.length > 1) {
-        const lastPoint = vertices[vertices.length - 1];
-        logMsg("Last vertex: (" + lastPoint.x.toFixed(2) + ", " + lastPoint.y.toFixed(2) + ", " + (lastPoint.z || 0).toFixed(2) + ")");
-      }
-      
-      // Clean up the wrapper
-      wrapper.destroy();
+    // If segment is a point, just return distance to the point
+    if (c1 < 0.0000001) {
+      const dx = point[0] - lineStart[0];
+      const dy = point[1] - lineStart[1];
+      const dz = point[2] - lineStart[2];
+      return Math.sqrt(dx*dx + dy*dy + dz*dz);
     }
     
-    if (featuresFound === 0) {
-      logMsg("No features found for analysis");
-    }
+    // Projection of w onto v, normalized by length of v
+    const b = (w[0]*v[0] + w[1]*v[1] + w[2]*v[2]) / c1;
+    
+    // Clamp to segment
+    const pb = Math.max(0, Math.min(1, b));
+    
+    // Calculate closest point on line
+    const closest = [
+      lineStart[0] + pb * v[0],
+      lineStart[1] + pb * v[1],
+      lineStart[2] + pb * v[2]
+    ];
+    
+    // Return distance to closest point
+    const dx = point[0] - closest[0];
+    const dy = point[1] - closest[1];
+    const dz = point[2] - closest[2];
+    return Math.sqrt(dx*dx + dy*dy + dz*dz);
   }
 
   //----------------------------------
