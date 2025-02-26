@@ -149,20 +149,26 @@ Item {
   // Enhanced logging system
   //----------------------------------
   function logMsg(msg) {
-    // Log to QField's message log (visible in the message panel)
-    iface.messageLog("QField 3D Nav: " + msg);
+    // Log to QField's message log
+    iface.logMessage("[QField 3D Nav] " + msg);
     
-    // Also add to a scrolling text overlay for immediate visibility
+    // Also log to console for developer debugging
+    console.log("[QField 3D Nav] " + msg);
+    
+    // Show toast with shorter duration for immediate feedback
+    iface.mainWindow().displayToast(msg, 3);
+    
+    // Also add to the debug text overlay for persistent visibility
     if (pipe_text === "") {
       pipe_text = msg;
     } else {
       // Add the new message to the end
-      pipe_text = pipe_text + " | " + msg;
+      pipe_text = pipe_text + "\n" + msg;
       
-      // Keep only the last 8 messages to ensure it doesn't get too long
-      const messages = pipe_text.split(" | ");
-      if (messages.length > 8) {
-        pipe_text = messages.slice(-8).join(" | ");
+      // Keep only the last 15 messages to ensure it doesn't get too long
+      const messages = pipe_text.split("\n");
+      if (messages.length > 15) {
+        pipe_text = messages.slice(-15).join("\n");
       }
     }
   }
