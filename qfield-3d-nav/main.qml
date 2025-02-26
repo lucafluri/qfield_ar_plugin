@@ -771,36 +771,45 @@ Item {
       color: "white"
     }
 
-    ScrollView {
-      id: debugScrollView
+    Rectangle {
+      id: debugContainer
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
       anchors.right: parent.right
-      anchors.bottom: parent.bottom
+      // Use bottom of parent with margin to avoid covering other elements
+      anchors.bottom: tiltReadingText.top
       anchors.margins: 5
-      height: Math.min(parent.height / 3, 200)  // Take up to 1/3 of the screen or 200px
-      clip: true
+      height: parent.height / 3  // Take 1/3 of the screen height
+      color: "black"
+      opacity: 0.5
+      radius: 5
+      z: 100  // Ensure it's on top of other elements
       
-      TextArea {
-        id: debugTextArea
-        text: pipe_text
-        font: Theme.defaultFont
-        color: "white"
-        readOnly: true
-        wrapMode: TextEdit.Wrap
-        background: Rectangle {
-          color: "black"
-          opacity: 0.5
-          radius: 5
-        }
+      ScrollView {
+        id: debugScrollView
+        anchors.fill: parent
+        anchors.margins: 2
+        clip: true
         
-        // Auto-scroll to bottom when new content is added
-        onTextChanged: {
-          cursorPosition = text.length
-          // Ensure the cursor/newest text is visible
-          Qt.callLater(function() {
-            debugScrollView.ScrollBar.vertical.position = 1.0
-          })
+        TextArea {
+          id: debugTextArea
+          text: pipe_text
+          font: Theme.defaultFont
+          color: "white"
+          readOnly: true
+          wrapMode: TextEdit.Wrap
+          background: Rectangle {
+            color: "transparent"
+          }
+          
+          // Auto-scroll to bottom when new content is added
+          onTextChanged: {
+            cursorPosition = text.length
+            // Ensure the cursor/newest text is visible
+            Qt.callLater(function() {
+              debugScrollView.ScrollBar.vertical.position = 1.0
+            })
+          }
         }
       }
     }
