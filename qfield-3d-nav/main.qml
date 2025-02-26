@@ -83,28 +83,28 @@ Item {
                     let currentLine = "";
                     
                     for (let i = 0; i < multiLineContent.length; i++) {
-                      const char = multiLineContent.charAt(i);
+                      const c = multiLineContent.charAt(i);
                       
-                      if (char === "(") {
+                      if (c === "(") {
                         openParenCount++;
                         if (openParenCount === 1) {
                           // Start of a new linestring
                           currentLine = "";
                         } else {
-                          currentLine += char;
+                          currentLine += c;
                         }
                       } 
-                      else if (char === ")") {
+                      else if (c === ")") {
                         openParenCount--;
                         if (openParenCount === 0) {
                           // End of a linestring
                           lineStrings.push(currentLine);
                         } else {
-                          currentLine += char;
+                          currentLine += c;
                         }
                       }
                       else {
-                        currentLine += char;
+                        currentLine += c;
                       }
                     }
                     
