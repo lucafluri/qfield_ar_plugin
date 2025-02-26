@@ -34,6 +34,11 @@ Item {
   property double currentTilt: 90
 
   property var pipeFeatures: []
+  
+  // Global component for QgsGeometryWrapper
+  property Component geometryWrapperComponentGlobal: Component {
+    QgsGeometryWrapper {}
+  }
 
   //----------------------------------
   // Helper for toast + text fallback
@@ -80,48 +85,56 @@ Item {
       logMsg("Cannot calculate distances - pipe features not loaded");
       return;
     }
-
-    // Component for creating geometry wrappers
-    const geometryWrapperComponent = Qt.createComponent("QgsGeometryWrapper.qml");
-    if (geometryWrapperComponent.status !== Component.Ready) {
-      logMsg("Failed to create geometry wrapper component");
-      return;
-    }
-
+    
     for (let i = 0; i < pipeFeatures.length; i++) {
-      const feature = pipeFeatures[i];
-      const wrapper = geometryWrapperComponent.createObject(null, {
-        qgsGeometry: feature.geometry,
-        crs: testPipesLayer.crs
-      });
-      
-      if (wrapper) {
-        const pointList = wrapper.pointList();
-        if (pointList && pointList.length > 0) {
-          // Calculate distance to first point of the feature
-          const dx = pointList[0].x() - currentPosition[0]; 
-          const dy = pointList[0].y() - currentPosition[1];
-          const dz = (pointList[0].z() || 0) - currentPosition[2];
-          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-          
-          logMsg("Distance to feature " + feature.id + " (first point): " + dist.toFixed(2) + " m");
-          
-          // If there are multiple points, also calculate distance to last point
-          if (pointList.length > 1) {
-            const lastPoint = pointList[pointList.length - 1];
-            const dx2 = lastPoint.x() - currentPosition[0];
-            const dy2 = lastPoint.y() - currentPosition[1];
-            const dz2 = (lastPoint.z() || 0) - currentPosition[2];
-            const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
-            
-            logMsg("Distance to feature " + feature.id + " (last point): " + dist2.toFixed(2) + " m");
+      try {
+        const feature = pipeFeatures[i];
+        
+        // Use the same approach as in the Repeater3D delegate
+        logMsg("Processing feature: " + feature.id);
+        
+        // Create a geometry wrapper instance
+        let wrapper = geometryWrapperComponentGlobal.createObject(null, {
+          "qgsGeometry": feature.geometry,
+          "crs": testPipesLayer.crs
+        });
+        
+        if (wrapper) {
+          logMsg("Created wrapper for feature: " + feature.id);
+          try {
+            const pointList = wrapper.pointList();
+            if (pointList && pointList.length > 0) {
+              // Calculate distance to first point of the feature
+              const dx = pointList[0].x() - currentPosition[0];
+              const dy = pointList[0].y() - currentPosition[1];
+              const dz = (pointList[0].z() || 0) - currentPosition[2];
+              const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+              
+              logMsg("Distance to feature " + feature.id + " (first point): " + dist.toFixed(2) + " m");
+              
+              // If there are multiple points, also calculate distance to last point
+              if (pointList.length > 1) {
+                const lastPoint = pointList[pointList.length - 1];
+                const dx2 = lastPoint.x() - currentPosition[0];
+                const dy2 = lastPoint.y() - currentPosition[1];
+                const dz2 = (lastPoint.z() || 0) - currentPosition[2];
+                const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
+                
+                logMsg("Distance to feature " + feature.id + " (last point): " + dist2.toFixed(2) + " m");
+              }
+            } else {
+              logMsg("No points found for feature " + feature.id);
+            }
+          } catch (e) {
+            logMsg("Error getting pointList: " + e);
           }
+          
+          wrapper.destroy();
         } else {
-          logMsg("No points found for feature " + feature.id);
+          logMsg("Failed to create geometry wrapper for feature " + feature.id);
         }
-        wrapper.destroy();
-      } else {
-        logMsg("Failed to create geometry wrapper for feature " + feature.id);
+      } catch (e) {
+        logMsg("Error in feature processing loop: " + e);
       }
     }
   }
@@ -305,15 +318,6 @@ Item {
           delegate: Model {
             required property var modelData
 
-            // Component for creating geometry wrappers
-            Component {
-              id: geometryWrapperComponent
-              QgsGeometryWrapper {
-                qgsGeometry: modelData.geometry
-                crs: plugin.testPipesLayer.crs
-              }
-            }
-
             geometry: ProceduralMesh {
               property real segments: 16
               property real tubeRadius: 0.05
@@ -337,11 +341,13 @@ Item {
                 let pos = []
                 
                 // Create a geometry wrapper instance
-                let wrapper = geometryWrapperComponent.createObject(null);
-                logMsg("Wrapper: " + wrapper)
+                let wrapper = geometryWrapperComponentGlobal.createObject(null, {
+                  "qgsGeometry": modelData.geometry,
+                  "crs": plugin.testPipesLayer.crs
+                });
                 if (wrapper) {
                   let pointList = wrapper.pointList();
-                    if (pointList && pointList.length > 0) {
+                  if (pointList && pointList.length > 0) {
                     // Compute distance from plugin.currentPosition to the first point
                     let dx = pointList[0].x() - plugin.currentPosition[0];
                     let dy = pointList[0].y() - plugin.currentPosition[1];
@@ -350,11 +356,11 @@ Item {
                     logMsg("Distance for feature " + modelData.id + ": " + dist.toFixed(2));
                     // Populate pos array from all geometry points
                     for (let i = 0; i < pointList.length; ++i) {
-                    pos.push([
-                      pointList[i].x() - plugin.currentPosition[0],
-                      pointList[i].y() - plugin.currentPosition[1],
-                      pointList[i].z() || 0
-                    ]);
+                      pos.push([
+                        pointList[i].x() - plugin.currentPosition[0],
+                        pointList[i].y() - plugin.currentPosition[1],
+                        pointList[i].z() || 0
+                      ]);
                     }
                   } else {
                     console.error("Failed to get valid pointList for feature", modelData.id);
