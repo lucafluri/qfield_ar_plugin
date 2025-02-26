@@ -151,27 +151,33 @@ Item {
       return;
     }
 
-    let feature0 = testPipesLayer.getFeature("0");
-    if (!feature0 || !feature0.geometry) {
-      console.error('Feature 0 not found or has no geometry');
+    // Get all features from the layer
+    const features = testPipesLayer.getFeatures();
+    if (!features || features.length === 0) {
+      logMsg('No features found in test_pipes layer');
       return;
     }
 
-    let feature1 = testPipesLayer.getFeature("1");
-    if (!feature1 || !feature1.geometry) {
-      console.error('Feature 1 not found or has no geometry');
-      return;
+    // Reset pipe features array
+    pipeFeatures = [];
+    
+    // Loop through all features and add them to the pipeFeatures array
+    for (let i = 0; i < features.length; i++) {
+      const feature = features[i];
+      if (feature && feature.geometry) {
+        pipeFeatures.push({
+          geometry: feature.geometry,
+          id: feature.id
+        });
+        logMsg(`Loaded feature ${feature.id}`);
+      }
     }
-
-    pipeFeatures = [{
-      geometry: feature0.geometry,
-      id: feature0.id
-    }, {
-      geometry: feature1.geometry,
-      id: feature1.id
-    }];
-
-    logMsg('Loaded ' + pipeFeatures.length + ' pipe features')
+    
+    if (pipeFeatures.length === 0) {
+      logMsg('No valid features found with geometry');
+    } else {
+      logMsg(`Loaded ${pipeFeatures.length} pipe features`);
+    }
   }
 
   function logPipeDistances() {
@@ -217,141 +223,98 @@ Item {
                 logMsg("Distance to feature " + feature.id + " (last point): " + dist2.toFixed(2) + " m");
               }
             } else {
-              logMsg("No points found for feature " + feature.id);
+              logMsg("No vertices found for feature: " + feature.id);
             }
           } catch (e) {
-            logMsg("Error getting pointList: " + e);
+            logMsg("Error calculating distance for feature " + feature.id + ": " + e);
           }
           
           wrapper.destroy();
         } else {
-          logMsg("Failed to create geometry wrapper for feature " + feature.id);
+          logMsg("Failed to create geometry wrapper for feature: " + feature.id);
         }
       } catch (e) {
-        logMsg("Error in feature processing loop: " + e);
+        logMsg("Error processing feature: " + e);
       }
     }
   }
 
   function initLayer() {
-    // logMsg("=== initLayer() ===")
-    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0]
-    // logMsg("Pipe Layer: " + (testPipesLayer ? testPipesLayer.name : "not found")) 
-
-    if (testPipesLayer) {
-      // logMsg("Feature 0: " + testPipesLayer.getFeature("0"))
-      logMsg("Geometry 0: " + testPipesLayer.getFeature("0").geometry)
-      // logMsg("Feature 1: " + testPipesLayer.getFeature("1"))
-      logMsg("Geometry 1: " + testPipesLayer.getFeature("1").geometry)
-      
-      // Debug geometry properties
-      debugGeometryProperties();
+    logMsg("Initializing test_pipes layer");
+    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0];
+    
+    if (!testPipesLayer) {
+      logMsg("Warning: test_pipes layer not found");
+      return;
     }
-
+    
+    logMsg("Found test_pipes layer: " + testPipesLayer.name);
+    
+    // Display CRS information to help with debugging
+    logMsg("Layer CRS: " + testPipesLayer.crs.authid);
+    
+    // Debug geometry properties to provide more information
+    debugGeometryProperties();
+    
+    // Load all pipe features
     loadPipeFeatures();
-    logPipeDistances();
-
-    return
+    
+    // Calculate and log distances to pipe features
+    if (pipeFeatures && pipeFeatures.length > 0) {
+      logMsg("Calculating distances to pipe features...");
+      logPipeDistances();
+    }
   }
   
   // Function to debug geometry properties
   function debugGeometryProperties() {
     if (!testPipesLayer) return;
     
-    const feature0 = testPipesLayer.getFeature("0");
-    if (!feature0 || !feature0.geometry) {
-      logMsg("No feature 0 or geometry");
+    // Get all features
+    const features = testPipesLayer.getFeatures();
+    if (!features || features.length === 0) {
+      logMsg("No features found in layer");
       return;
     }
     
-    // Log some information about the geometry
-    logMsg("Feature 0 geometry type: " + feature0.geometry.type);
-    logMsg("Feature 0 geometry wkbType: " + feature0.geometry.wkbType);
-    
-    // List all properties and methods on the geometry object
-    logMsg("Geometry properties and methods:");
-    for (let prop in feature0.geometry) {
-      const propType = typeof feature0.geometry[prop];
-      logMsg("- " + prop + ": " + propType);
-      
-      // If it's a function, try to call it and see what happens
-      if (propType === 'function' && 
-          prop !== 'constructor' && 
-          prop !== 'toString' && 
-          prop !== 'valueOf') {
-        try {
-          const result = feature0.geometry[prop]();
-          logMsg("  -> " + prop + "() returned: " + (result !== null ? "value" : "null"));
-        } catch (e) {
-          logMsg("  -> " + prop + "() error: " + e);
-        }
-      }
-    }
-    
-    // Check if we can directly access vertices
-    try {
-      if (feature0.geometry.vertices) {
-        logMsg("Feature 0 has vertices property: " + feature0.geometry.vertices.length + " vertices");
-      } else {
-        logMsg("Feature 0 has no vertices property");
-      }
-    } catch (e) {
-      logMsg("Error accessing vertices: " + e);
-    }
-    
-    // Create QgsGeometryWrapper to debug its properties
-    const wrapper = geometryWrapperComponentGlobal.createObject(null, {
-      "qgsGeometry": feature0.geometry,
-      "crs": testPipesLayer.crs
-    });
-    
-    if (wrapper) {
-      logMsg("Wrapper created successfully");
-      
-      // Log available methods on wrapper
-      logMsg("Wrapper properties and methods:");
-      for (let prop in wrapper) {
-        const propType = typeof wrapper[prop];
-        logMsg("- " + prop + ": " + propType);
-        
-        // Try calling the method if it's a function
-        if (propType === 'function' && 
-            prop !== 'constructor' && 
-            prop !== 'toString' && 
-            prop !== 'destroy' && 
-            prop !== 'getVerticesAsArray' && 
-            prop !== 'valueOf') {
-          try {
-            const result = wrapper[prop]();
-            logMsg("  -> " + prop + "() returned: " + (result !== null ? "value" : "null"));
-          } catch (e) {
-            logMsg("  -> " + prop + "() error: " + e);
-          }
-        }
+    // Loop through each feature and debug its properties
+    for (let i = 0; i < features.length; i++) {
+      const feature = features[i];
+      if (!feature || !feature.geometry) {
+        continue;
       }
       
-      // Try our custom method
-      try {
-        const vertices = wrapper.getVerticesAsArray();
-        logMsg("getVerticesAsArray() returns: " + (vertices.length ? vertices.length + " points" : "0 points"));
-        
-        if (vertices.length > 0) {
-          logMsg("First point: " + vertices[0].x + ", " + vertices[0].y);
-          logMsg("Vertex array: " + JSON.stringify(vertices.slice(0, 2))); // Show first two vertices
-        }
-      } catch (e) {
-        logMsg("Error with getVerticesAsArray(): " + e);
+      // Create a geometry wrapper instance
+      let wrapper = geometryWrapperComponentGlobal.createObject(null, {
+        "qgsGeometry": feature.geometry,
+        "crs": testPipesLayer.crs
+      });
+      
+      if (!wrapper) continue;
+      
+      // Get the vertices from the geometry
+      const vertices = wrapper.getVerticesAsArray();
+      if (!vertices || vertices.length === 0) {
+        wrapper.destroy();
+        continue;
       }
       
+      // Log information about the vertices
+      logMsg("Feature " + feature.id + " has " + vertices.length + " vertices");
+      
+      // Log the first vertex
+      const firstPoint = vertices[0];
+      logMsg("First vertex: (" + firstPoint.x.toFixed(2) + ", " + firstPoint.y.toFixed(2) + ", " + (firstPoint.z || 0).toFixed(2) + ")");
+      
+      // Log the last vertex if there is more than one
+      if (vertices.length > 1) {
+        const lastPoint = vertices[vertices.length - 1];
+        logMsg("Last vertex: (" + lastPoint.x.toFixed(2) + ", " + lastPoint.y.toFixed(2) + ", " + (lastPoint.z || 0).toFixed(2) + ")");
+      }
+      
+      // Clean up the wrapper
       wrapper.destroy();
-    } else {
-      logMsg("Failed to create wrapper for debugging");
     }
-  }
-
-  Component.onCompleted: {
-    iface.addItemToPluginsToolbar(pluginButton);
-    Qt.callLater(initLayer);
   }
 
   //----------------------------------
@@ -865,6 +828,11 @@ Item {
             '\ncurrent tilt: ' + plugin.currentTilt
       }
     }
+  }
+
+  Component.onCompleted: {
+    iface.addItemToPluginsToolbar(pluginButton);
+    Qt.callLater(initLayer);
   }
 
 }
