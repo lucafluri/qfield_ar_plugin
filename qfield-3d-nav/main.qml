@@ -72,13 +72,14 @@ Item {
                 }
                 // Parse MultiLineString WKT: MULTILINESTRING((x1 y1, x2 y2), (x3 y3, x4 y4))
                 else if (wkt.startsWith("MULTILINESTRING")) {
-                  logMsg("Processing MultiLineString WKT");
+                  logMsg("- Detected MultiLineString in WKT");
                   
+                  // Extract all linestrings from the MultiLineString
                   try {
-                    // Get the content between the outer parentheses: ((x1 y1, x2 y2), (x3 y3, x4 y4))
-                    const multiLineContent = wkt.substring(wkt.indexOf("(") + 1, wkt.lastIndexOf(")"));
+                    // Extract content between the outer parentheses
+                    const multiLineContent = wkt.substring(wkt.indexOf("((") + 2, wkt.lastIndexOf("))"));
                     
-                    // Find all individual linestrings (content between inner parentheses)
+                    // Parse individual linestrings
                     let lineStrings = [];
                     let openParenCount = 0;
                     let currentLine = "";
@@ -109,7 +110,24 @@ Item {
                       }
                     }
                     
-                    logMsg("Found " + lineStrings.length + " linestrings in MultiLineString");
+                    logMsg("- Successfully parsed " + lineStrings.length + " linestrings");
+                    
+                    // Count total vertices across all linestrings
+                    let totalVertices = 0;
+                    for (let i = 0; i < lineStrings.length; i++) {
+                      const coordPairs = lineStrings[i].split(',');
+                      totalVertices += coordPairs.length;
+                    }
+                    logMsg("- Total vertices across all linestrings: " + totalVertices);
+                    
+                    // Log first few vertices from first linestring for debugging
+                    if (lineStrings.length > 0) {
+                      const firstLineCoords = lineStrings[0].split(',');
+                      if (firstLineCoords.length > 0) {
+                        const firstCoord = firstLineCoords[0].trim();
+                        logMsg("- First coordinate: " + firstCoord);
+                      }
+                    }
                     
                     // If we have at least one linestring, parse the first one
                     if (lineStrings.length > 0) {
@@ -130,7 +148,7 @@ Item {
                       }
                     }
                   } catch (e) {
-                    logMsg("Advanced MultiLineString parsing error: " + e);
+                    logMsg("- Error parsing MultiLineString: " + e.toString());
                     
                     // Fallback to simpler parsing method
                     try {
@@ -170,7 +188,7 @@ Item {
                         }
                       }
                     } catch (e2) {
-                      logMsg("Fallback MultiLineString parsing also failed: " + e2);
+                      logMsg("- Fallback MultiLineString parsing also failed: " + e2);
                     }
                   }
                 }
@@ -279,20 +297,74 @@ Item {
           // Advanced WKT analysis based on type
           if (wkt.startsWith("MultiLineString")) {
             logMsg("- Detected MultiLineString in WKT");
-            // Count number of linestrings in MultiLineString
-            let count = 0;
-            let pos = 0;
-            while ((pos = wkt.indexOf("(", pos + 1)) !== -1) {
-              if (wkt.charAt(pos-1) === '(' || wkt.charAt(pos-1) === ',') {
-                count++;
+            
+            // Extract all linestrings from the MultiLineString
+            try {
+              // Extract content between the outer parentheses
+              const multiLineContent = wkt.substring(wkt.indexOf("((") + 2, wkt.lastIndexOf("))"));
+              
+              // Parse individual linestrings
+              let lineStrings = [];
+              let openParenCount = 0;
+              let currentLine = "";
+              
+              for (let i = 0; i < multiLineContent.length; i++) {
+                const c = multiLineContent.charAt(i);
+                
+                if (c === "(") {
+                  openParenCount++;
+                  if (openParenCount === 1) {
+                    // Start of a new linestring
+                    currentLine = "";
+                  } else {
+                    currentLine += c;
+                  }
+                } 
+                else if (c === ")") {
+                  openParenCount--;
+                  if (openParenCount === 0) {
+                    // End of a linestring
+                    lineStrings.push(currentLine);
+                  } else {
+                    currentLine += c;
+                  }
+                }
+                else {
+                  currentLine += c;
+                }
               }
+              
+              logMsg("- Successfully parsed " + lineStrings.length + " linestrings");
+              
+              // Count total vertices across all linestrings
+              let totalVertices = 0;
+              for (let i = 0; i < lineStrings.length; i++) {
+                const coordPairs = lineStrings[i].split(',');
+                totalVertices += coordPairs.length;
+              }
+              logMsg("- Total vertices across all linestrings: " + totalVertices);
+              
+              // Log first few vertices from first linestring for debugging
+              if (lineStrings.length > 0) {
+                const firstLineCoords = lineStrings[0].split(',');
+                if (firstLineCoords.length > 0) {
+                  const firstCoord = firstLineCoords[0].trim();
+                  logMsg("- First coordinate: " + firstCoord);
+                }
+              }
+            } catch (e) {
+              logMsg("- Error parsing MultiLineString: " + e.toString());
             }
-            logMsg("- Contains approximately " + count + " linestrings");
           } else if (wkt.startsWith("LineString")) {
             logMsg("- Detected LineString in WKT");
             // Count vertices in LineString
             const coordPairs = wkt.substring(wkt.indexOf('(') + 1, wkt.lastIndexOf(')')).split(',');
             logMsg("- Contains approximately " + coordPairs.length + " vertices");
+            
+            // Log first coordinate for debugging
+            if (coordPairs.length > 0) {
+              logMsg("- First coordinate: " + coordPairs[0].trim());
+            }
           }
         }
       } catch (e) {
@@ -352,12 +424,12 @@ Item {
     // Reset pipe features array
     pipeFeatures = [];
     
-    // Try to get features by ID, starting from 0
-    // Since we don't know how many features there are, we'll try a reasonable number
+    // We'll only load 2-3 features as requested
+    const maxFeaturesToLoad = 3;
     let featuresFound = 0;
-    logMsg("Attempting to load features from layer: " + testPipesLayer.name);
+    logMsg("Attempting to load up to " + maxFeaturesToLoad + " features from layer: " + testPipesLayer.name);
     
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 10 && featuresFound < maxFeaturesToLoad; i++) {
       const featureId = i.toString();
       const feature = testPipesLayer.getFeature(featureId);
       
@@ -371,13 +443,27 @@ Item {
         // Perform detailed geometry analysis
         analyzeGeometry(feature.geometry);
         
+        // Add color property to the feature - use distinct colors for each pipe
+        const pipeColors = [
+          Qt.rgba(0.2, 0.6, 1.0, 1.0),  // Blue
+          Qt.rgba(0.8, 0.2, 0.2, 1.0),  // Red
+          Qt.rgba(0.2, 0.8, 0.2, 1.0)   // Green
+        ];
+        const featureColor = pipeColors[featuresFound % pipeColors.length];
+        
         pipeFeatures.push({
           geometry: feature.geometry,
-          id: feature.id
+          id: feature.id,
+          color: featureColor
         });
         
         featuresFound++;
-        logMsg("Loaded feature " + feature.id + " successfully");
+        logMsg("Loaded feature " + feature.id + " successfully (" + featuresFound + " of " + maxFeaturesToLoad + ")");
+        
+        if (featuresFound >= maxFeaturesToLoad) {
+          logMsg("Reached maximum number of features to load (" + maxFeaturesToLoad + ")");
+          break;
+        }
       } else {
         logMsg("Feature " + featureId + " exists but has no geometry");
       }
@@ -674,6 +760,9 @@ Item {
 
           delegate: Model {
             required property var modelData
+            
+            // Add color property to the model data when loading features
+            property color pipeColor: modelData.color || Qt.rgba(0.2, 0.6, 1.0, 1.0)
 
             geometry: ProceduralMesh {
               property real segments: 16
@@ -726,40 +815,112 @@ Item {
                         ]);
                       }
                       
-                      // If there are too few points, it might be a MultiLineString with only the first part extracted
+                      // If there are too few points or we want to ensure we get all parts of a MultiLineString
                       // Let's try to get the WKT and parse it manually if needed
-                      if (vertices.length < 2 && modelData.geometry.asWkt) {
+                      if ((vertices.length < 2 || modelData.geometry.asWkt && modelData.geometry.asWkt().startsWith("MultiLineString")) && modelData.geometry.asWkt) {
                         try {
                           const wkt = modelData.geometry.asWkt();
                           
                           // Check if it's a MultiLineString
                           if (wkt.startsWith("MultiLineString")) {
-                            console.log("Attempting manual MultiLineString parsing for feature " + modelData.id);
+                            logMsg("Attempting manual MultiLineString parsing for feature " + modelData.id);
                             
-                            // Extract all coordinate pairs from the WKT
-                            const regex = /(-?\d+\.?\d*)\s+(-?\d+\.?\d*)/g;
-                            let match;
-                            let allPoints = [];
-                            
-                            while ((match = regex.exec(wkt)) !== null) {
-                              const x = parseFloat(match[1]);
-                              const y = parseFloat(match[2]);
+                            // Try to extract content between the outer parentheses
+                            try {
+                              const multiLineContent = wkt.substring(wkt.indexOf("((") + 2, wkt.lastIndexOf("))"));
                               
-                              // Add to our points array, relative to current position
-                              allPoints.push([
-                                x - plugin.currentPosition[0],
-                                y - plugin.currentPosition[1],
-                                0 // No Z value in WKT
-                              ]);
-                            }
-                            
-                            if (allPoints.length > 0) {
-                              console.log("Extracted " + allPoints.length + " points from WKT");
-                              pos = allPoints; // Replace the pos array with our manually extracted points
+                              // Parse individual linestrings
+                              let lineStrings = [];
+                              let openParenCount = 0;
+                              let currentLine = "";
+                              
+                              for (let i = 0; i < multiLineContent.length; i++) {
+                                const c = multiLineContent.charAt(i);
+                                
+                                if (c === "(") {
+                                  openParenCount++;
+                                  if (openParenCount === 1) {
+                                    // Start of a new linestring
+                                    currentLine = "";
+                                  } else {
+                                    currentLine += c;
+                                  }
+                                } 
+                                else if (c === ")") {
+                                  openParenCount--;
+                                  if (openParenCount === 0) {
+                                    // End of a linestring
+                                    lineStrings.push(currentLine);
+                                  } else {
+                                    currentLine += c;
+                                  }
+                                }
+                                else {
+                                  currentLine += c;
+                                }
+                              }
+                              
+                              logMsg("Parsed " + lineStrings.length + " linestrings from MultiLineString");
+                              
+                              // Process all linestrings to get all points
+                              let allPoints = [];
+                              
+                              for (let i = 0; i < lineStrings.length; i++) {
+                                const coordPairs = lineStrings[i].split(',');
+                                
+                                for (let j = 0; j < coordPairs.length; j++) {
+                                  const coordPair = coordPairs[j].trim();
+                                  const coords = coordPair.split(' ');
+                                  
+                                  if (coords.length >= 2) {
+                                    const x = parseFloat(coords[0]);
+                                    const y = parseFloat(coords[1]);
+                                    const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
+                                    
+                                    if (!isNaN(x) && !isNaN(y)) {
+                                      // Add to our points array, relative to current position
+                                      allPoints.push([
+                                        x - plugin.currentPosition[0],
+                                        y - plugin.currentPosition[1],
+                                        z
+                                      ]);
+                                    }
+                                  }
+                                }
+                              }
+                              
+                              if (allPoints.length > 0) {
+                                logMsg("Extracted " + allPoints.length + " points from MultiLineString WKT");
+                                pos = allPoints; // Replace the pos array with our manually extracted points
+                              }
+                            } catch (e) {
+                              logMsg("Error in advanced MultiLineString parsing: " + e.toString());
+                              
+                              // Fallback to regex method if the advanced parsing fails
+                              const regex = /(-?\d+\.?\d*)\s+(-?\d+\.?\d*)/g;
+                              let match;
+                              let allPoints = [];
+                              
+                              while ((match = regex.exec(wkt)) !== null) {
+                                const x = parseFloat(match[1]);
+                                const y = parseFloat(match[2]);
+                                
+                                // Add to our points array, relative to current position
+                                allPoints.push([
+                                  x - plugin.currentPosition[0],
+                                  y - plugin.currentPosition[1],
+                                  0 // No Z value in WKT
+                                ]);
+                              }
+                              
+                              if (allPoints.length > 0) {
+                                logMsg("Extracted " + allPoints.length + " points using regex fallback");
+                                pos = allPoints; // Replace the pos array with our manually extracted points
+                              }
                             }
                           }
                         } catch (e) {
-                          console.error("Error parsing WKT for feature " + modelData.id + ": " + e);
+                          logMsg("Error parsing WKT for feature " + modelData.id + ": " + e.toString());
                         }
                       }
                     } else {
@@ -813,11 +974,13 @@ Item {
               }
             }
 
-            materials: PrincipledMaterial {
-              baseColor: "#0066ff"  // Blue color for actual pipe data
-              roughness: 0.3
-              metalness: 0.1
-            }
+            materials: [
+              DefaultMaterial {
+                diffuseColor: pipeColor
+                specularAmount: 0.5
+                roughness: 0.2
+              }
+            ]
           }
         }
 
@@ -903,11 +1066,13 @@ Item {
               }
             }
 
-            materials: PrincipledMaterial {
-              baseColor: "#ff0000"
-              roughness: 0.3
-              metalness: 0.1
-            }
+            materials: [
+              DefaultMaterial {
+                diffuseColor: "red"
+                specularAmount: 0.5
+                roughness: 0.2
+              }
+            ]
           }
         }
 
@@ -923,11 +1088,13 @@ Item {
             source: "#Sphere"
             scale: Qt.vector3d(0.01, 0.01, 0.01)
 
-            materials: PrincipledMaterial {
-              baseColor: index === 0 ? "#00ff00" : "#0000ff"  // Green for start, blue for others
-              roughness: 0.3
-              metalness: 0.1
-            }
+            materials: [
+              DefaultMaterial {
+                diffuseColor: index === 0 ? "green" : "blue"
+                specularAmount: 0.5
+                roughness: 0.2
+              }
+            ]
           }
         }
       }
@@ -1133,7 +1300,8 @@ Item {
   
   // Initialize when plugin loads
   Component.onCompleted: {
-    logMsg("QField 3D Navigation Plugin v1.06 loaded");
+    logMsg("QField 3D Navigation Plugin v1.07 loaded");
+    logMsg("Enhanced MultiLineString support and debugging tools added");
     
     // Add plugin button to toolbar
     iface.addItemToPluginsToolbar(pluginButton);
