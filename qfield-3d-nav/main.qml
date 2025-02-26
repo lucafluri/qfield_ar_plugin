@@ -37,7 +37,89 @@ Item {
   
   // Global component for QgsGeometryWrapper
   property Component geometryWrapperComponentGlobal: Component {
-    QgsGeometryWrapper {}
+    QgsGeometryWrapper {
+      // Add a method to try to get vertices as an array
+      function getVerticesAsArray() {
+        try {
+          // Try accessing asJsonObject which might include the full geometry
+          if (typeof this.asJsonObject === 'function') {
+            try {
+              const geoObj = this.asJsonObject();
+              if (geoObj && geoObj.coordinates) {
+                if (Array.isArray(geoObj.coordinates)) {
+                  // Handle different geometry types
+                  if (geoObj.type === 'LineString') {
+                    // Direct array of coordinates for LineString
+                    return geoObj.coordinates.map(c => ({ 
+                      x: c[0], 
+                      y: c[1], 
+                      z: c.length > 2 ? c[2] : 0 
+                    }));
+                  } else if (geoObj.type === 'MultiLineString') {
+                    // Take first line for MultiLineString
+                    if (geoObj.coordinates.length > 0) {
+                      return geoObj.coordinates[0].map(c => ({ 
+                        x: c[0], 
+                        y: c[1], 
+                        z: c.length > 2 ? c[2] : 0 
+                      }));
+                    }
+                  }
+                }
+              }
+            } catch (e) {
+              console.error("Error processing asJsonObject:", e);
+            }
+          }
+          
+          // First try to use pointList - this might only work for point geometries
+          const points = pointList();
+          if (points && points.length > 0) {
+            return points.map(p => ({ x: p.x(), y: p.y(), z: p.z() || 0 }));
+          }
+          
+          // Try to get as GeoJSON string
+          if (typeof this.asGeoJson === 'function') {
+            const geojson = this.asGeoJson();
+            if (geojson) {
+              try {
+                const geo = JSON.parse(geojson);
+                if (geo && geo.coordinates) {
+                  if (geo.type === 'LineString') {
+                    return geo.coordinates.map(c => ({ x: c[0], y: c[1], z: c[2] || 0 }));
+                  } else if (geo.type === 'MultiLineString' && geo.coordinates.length > 0) {
+                    return geo.coordinates[0].map(c => ({ x: c[0], y: c[1], z: c[2] || 0 }));
+                  }
+                }
+              } catch (e) {
+                console.error("Error parsing GeoJSON:", e);
+              }
+            }
+          }
+          
+          // Fall back to checking if there's a vertices() method
+          if (typeof this.vertices === 'function') {
+            const vertices = this.vertices();
+            if (vertices && vertices.length > 0) {
+              return vertices.map(v => ({ x: v.x(), y: v.y(), z: v.z() || 0 }));
+            }
+          }
+          
+          // Try to get it as a polyline
+          if (typeof this.asPolyline === 'function') {
+            const polyline = this.asPolyline();
+            if (polyline && polyline.length > 0) {
+              return polyline.map(p => ({ x: p.x(), y: p.y(), z: p.z() || 0 }));
+            }
+          }
+        } catch (e) {
+          console.error("Error in getVerticesAsArray:", e);
+        }
+        
+        // If all else fails, return empty array
+        return [];
+      }
+    }
   }
 
   //----------------------------------
@@ -102,22 +184,22 @@ Item {
         if (wrapper) {
           logMsg("Created wrapper for feature: " + feature.id);
           try {
-            const pointList = wrapper.pointList();
-            if (pointList && pointList.length > 0) {
+            const vertices = wrapper.getVerticesAsArray();
+            if (vertices && vertices.length > 0) {
               // Calculate distance to first point of the feature
-              const dx = pointList[0].x() - currentPosition[0];
-              const dy = pointList[0].y() - currentPosition[1];
-              const dz = (pointList[0].z() || 0) - currentPosition[2];
+              const dx = vertices[0].x - currentPosition[0];
+              const dy = vertices[0].y - currentPosition[1];
+              const dz = (vertices[0].z || 0) - currentPosition[2];
               const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
               
               logMsg("Distance to feature " + feature.id + " (first point): " + dist.toFixed(2) + " m");
               
               // If there are multiple points, also calculate distance to last point
-              if (pointList.length > 1) {
-                const lastPoint = pointList[pointList.length - 1];
-                const dx2 = lastPoint.x() - currentPosition[0];
-                const dy2 = lastPoint.y() - currentPosition[1];
-                const dz2 = (lastPoint.z() || 0) - currentPosition[2];
+              if (vertices.length > 1) {
+                const lastPoint = vertices[vertices.length - 1];
+                const dx2 = lastPoint.x - currentPosition[0];
+                const dy2 = lastPoint.y - currentPosition[1];
+                const dz2 = (lastPoint.z || 0) - currentPosition[2];
                 const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
                 
                 logMsg("Distance to feature " + feature.id + " (last point): " + dist2.toFixed(2) + " m");
@@ -149,12 +231,110 @@ Item {
       logMsg("Geometry 0: " + testPipesLayer.getFeature("0").geometry)
       // logMsg("Feature 1: " + testPipesLayer.getFeature("1"))
       logMsg("Geometry 1: " + testPipesLayer.getFeature("1").geometry)
+      
+      // Debug geometry properties
+      debugGeometryProperties();
     }
 
     loadPipeFeatures();
     logPipeDistances();
 
     return
+  }
+  
+  // Function to debug geometry properties
+  function debugGeometryProperties() {
+    if (!testPipesLayer) return;
+    
+    const feature0 = testPipesLayer.getFeature("0");
+    if (!feature0 || !feature0.geometry) {
+      logMsg("No feature 0 or geometry");
+      return;
+    }
+    
+    // Log some information about the geometry
+    logMsg("Feature 0 geometry type: " + feature0.geometry.type);
+    logMsg("Feature 0 geometry wkbType: " + feature0.geometry.wkbType);
+    
+    // List all properties and methods on the geometry object
+    logMsg("Geometry properties and methods:");
+    for (let prop in feature0.geometry) {
+      const propType = typeof feature0.geometry[prop];
+      logMsg("- " + prop + ": " + propType);
+      
+      // If it's a function, try to call it and see what happens
+      if (propType === 'function' && 
+          prop !== 'constructor' && 
+          prop !== 'toString' && 
+          prop !== 'valueOf') {
+        try {
+          const result = feature0.geometry[prop]();
+          logMsg("  -> " + prop + "() returned: " + (result !== null ? "value" : "null"));
+        } catch (e) {
+          logMsg("  -> " + prop + "() error: " + e);
+        }
+      }
+    }
+    
+    // Check if we can directly access vertices
+    try {
+      if (feature0.geometry.vertices) {
+        logMsg("Feature 0 has vertices property: " + feature0.geometry.vertices.length + " vertices");
+      } else {
+        logMsg("Feature 0 has no vertices property");
+      }
+    } catch (e) {
+      logMsg("Error accessing vertices: " + e);
+    }
+    
+    // Create QgsGeometryWrapper to debug its properties
+    const wrapper = geometryWrapperComponentGlobal.createObject(null, {
+      "qgsGeometry": feature0.geometry,
+      "crs": testPipesLayer.crs
+    });
+    
+    if (wrapper) {
+      logMsg("Wrapper created successfully");
+      
+      // Log available methods on wrapper
+      logMsg("Wrapper properties and methods:");
+      for (let prop in wrapper) {
+        const propType = typeof wrapper[prop];
+        logMsg("- " + prop + ": " + propType);
+        
+        // Try calling the method if it's a function
+        if (propType === 'function' && 
+            prop !== 'constructor' && 
+            prop !== 'toString' && 
+            prop !== 'destroy' && 
+            prop !== 'getVerticesAsArray' && 
+            prop !== 'valueOf') {
+          try {
+            const result = wrapper[prop]();
+            logMsg("  -> " + prop + "() returned: " + (result !== null ? "value" : "null"));
+          } catch (e) {
+            logMsg("  -> " + prop + "() error: " + e);
+          }
+        }
+      }
+      
+      // Try our custom method
+      try {
+        const vertices = wrapper.getVerticesAsArray();
+        logMsg("getVerticesAsArray() returns: " + (vertices.length ? vertices.length + " points" : "0 points"));
+        
+        if (vertices.length > 0) {
+          logMsg("First point: " + vertices[0].x + ", " + vertices[0].y);
+          logMsg("Vertex array: " + JSON.stringify(vertices.slice(0, 2))); // Show first two vertices
+        }
+      } catch (e) {
+        logMsg("Error with getVerticesAsArray(): " + e);
+      }
+      
+      wrapper.destroy();
+    } else {
+      logMsg("Failed to create wrapper for debugging");
+    }
   }
 
   Component.onCompleted: {
@@ -346,24 +526,24 @@ Item {
                   "crs": plugin.testPipesLayer.crs
                 });
                 if (wrapper) {
-                  let pointList = wrapper.pointList();
-                  if (pointList && pointList.length > 0) {
+                  let vertices = wrapper.getVerticesAsArray();
+                  if (vertices && vertices.length > 0) {
                     // Compute distance from plugin.currentPosition to the first point
-                    let dx = pointList[0].x() - plugin.currentPosition[0];
-                    let dy = pointList[0].y() - plugin.currentPosition[1];
-                    let dz = (pointList[0].z() || 0) - plugin.currentPosition[2];
+                    let dx = vertices[0].x - plugin.currentPosition[0];
+                    let dy = vertices[0].y - plugin.currentPosition[1];
+                    let dz = (vertices[0].z || 0) - plugin.currentPosition[2];
                     let dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
                     logMsg("Distance for feature " + modelData.id + ": " + dist.toFixed(2));
                     // Populate pos array from all geometry points
-                    for (let i = 0; i < pointList.length; ++i) {
+                    for (let i = 0; i < vertices.length; ++i) {
                       pos.push([
-                        pointList[i].x() - plugin.currentPosition[0],
-                        pointList[i].y() - plugin.currentPosition[1],
-                        pointList[i].z() || 0
+                        vertices[i].x - plugin.currentPosition[0],
+                        vertices[i].y - plugin.currentPosition[1],
+                        vertices[i].z || 0
                       ]);
                     }
                   } else {
-                    console.error("Failed to get valid pointList for feature", modelData.id);
+                    console.error("Failed to get valid vertices for feature", modelData.id);
                   }
                   wrapper.destroy();
                 } else {
@@ -572,7 +752,7 @@ Item {
       id: gpsAccuracyText
       anchors.top: gpsPositionText.bottom
       anchors.left: parent.left
-      text: 'Accuracy: ' + positionSource.sourceError
+      text: 'Accuracy: ' + positionSource.supportedPositioningMethods
       font: Theme.defaultFont
       color: "white"
     }
