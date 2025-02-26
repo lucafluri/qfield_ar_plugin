@@ -317,11 +317,15 @@ Item {
             geometry: ProceduralMesh {
               property real segments: 16
               property real tubeRadius: 0.05
-              property var meshArrays: generateTube(segments, tubeRadius)
+              property var meshArrays: null  // Initialize to null instead of binding
 
-              positions: meshArrays.verts
-              normals: meshArrays.normals
-              indexes: meshArrays.indices
+              positions: meshArrays ? meshArrays.verts : []
+              normals: meshArrays ? meshArrays.normals : []
+              indexes: meshArrays ? meshArrays.indices : []
+
+              Component.onCompleted: {
+                meshArrays = generateTube(segments, tubeRadius)
+              }
 
               function generateTube(segments: real, tubeRadius: real) {
                 let verts = []
@@ -417,11 +421,15 @@ Item {
             geometry: ProceduralMesh {
               property real segments: 16
               property real tubeRadius: 0.05
-              property var meshArrays: generateTube(segments, tubeRadius)
+              property var meshArrays: null  // Initialize to null instead of binding
 
-              positions: meshArrays.verts
-              normals: meshArrays.normals
-              indexes: meshArrays.indices
+              positions: meshArrays ? meshArrays.verts : []
+              normals: meshArrays ? meshArrays.normals : []
+              indexes: meshArrays ? meshArrays.indices : []
+
+              Component.onCompleted: {
+                meshArrays = generateTube(segments, tubeRadius)
+              }
 
               function generateTube(segments: real, tubeRadius: real) {
                 let verts = []
