@@ -35,52 +35,75 @@ Item {
 
   property var pipeFeatures: []
   
-  // Global component for QgsGeometryWrapper
+  // Global component for geometry handling
   property Component geometryWrapperComponentGlobal: Component {
-    QgsGeometryWrapper {
+    QtObject {
+      property var qgsGeometry
+      property var crs
+      
       // Add a method to try to get vertices as an array
       function getVerticesAsArray() {
         try {
-          // Try accessing asJsonObject which might include the full geometry
-          if (typeof this.asJsonObject === 'function') {
+          // Try direct WKT parsing first
+          if (typeof qgsGeometry.asWkt === 'function') {
             try {
-              const geoObj = this.asJsonObject();
-              if (geoObj && geoObj.coordinates) {
-                if (Array.isArray(geoObj.coordinates)) {
-                  // Handle different geometry types
-                  if (geoObj.type === 'LineString') {
-                    // Direct array of coordinates for LineString
-                    return geoObj.coordinates.map(c => ({ 
-                      x: c[0], 
-                      y: c[1], 
-                      z: c.length > 2 ? c[2] : 0 
-                    }));
-                  } else if (geoObj.type === 'MultiLineString') {
-                    // Take first line for MultiLineString
-                    if (geoObj.coordinates.length > 0) {
-                      return geoObj.coordinates[0].map(c => ({ 
-                        x: c[0], 
-                        y: c[1], 
-                        z: c.length > 2 ? c[2] : 0 
-                      }));
-                    }
+              const wkt = qgsGeometry.asWkt();
+              if (wkt) {
+                logMsg("WKT available, trying to parse");
+                
+                // Parse LineString WKT: LINESTRING(x1 y1, x2 y2)
+                if (wkt.startsWith("LINESTRING")) {
+                  const coordsText = wkt.substring(wkt.indexOf("(") + 1, wkt.lastIndexOf(")"));
+                  const coordPairs = coordsText.split(",");
+                  
+                  if (coordPairs.length > 0) {
+                    logMsg("WKT parser found " + coordPairs.length + " points");
+                    
+                    return coordPairs.map(function(pair) {
+                      const coords = pair.trim().split(" ");
+                      return {
+                        x: parseFloat(coords[0]),
+                        y: parseFloat(coords[1]),
+                        z: coords.length > 2 ? parseFloat(coords[2]) : 0
+                      };
+                    });
+                  }
+                }
+                // Parse MultiLineString WKT: MULTILINESTRING((x1 y1, x2 y2), (x3 y3, x4 y4))
+                else if (wkt.startsWith("MULTILINESTRING")) {
+                  // Extract the first linestring
+                  const multiLine = wkt.substring(wkt.indexOf("(") + 1, wkt.lastIndexOf(")"));
+                  const firstLine = multiLine.substring(multiLine.indexOf("(") + 1, multiLine.indexOf(")"));
+                  const coordPairs = firstLine.split(",");
+                  
+                  if (coordPairs.length > 0) {
+                    logMsg("WKT parser found " + coordPairs.length + " points in first part of multilinestring");
+                    
+                    return coordPairs.map(function(pair) {
+                      const coords = pair.trim().split(" ");
+                      return {
+                        x: parseFloat(coords[0]),
+                        y: parseFloat(coords[1]),
+                        z: coords.length > 2 ? parseFloat(coords[2]) : 0
+                      };
+                    });
                   }
                 }
               }
             } catch (e) {
-              console.error("Error processing asJsonObject:", e);
+              logMsg("Error parsing WKT: " + e);
             }
           }
           
           // First try to use pointList - this might only work for point geometries
-          const points = pointList();
+          const points = qgsGeometry.pointList();
           if (points && points.length > 0) {
             return points.map(p => ({ x: p.x(), y: p.y(), z: p.z() || 0 }));
           }
           
           // Try to get as GeoJSON string
-          if (typeof this.asGeoJson === 'function') {
-            const geojson = this.asGeoJson();
+          if (typeof qgsGeometry.asGeoJson === 'function') {
+            const geojson = qgsGeometry.asGeoJson();
             if (geojson) {
               try {
                 const geo = JSON.parse(geojson);
@@ -98,16 +121,16 @@ Item {
           }
           
           // Fall back to checking if there's a vertices() method
-          if (typeof this.vertices === 'function') {
-            const vertices = this.vertices();
+          if (typeof qgsGeometry.vertices === 'function') {
+            const vertices = qgsGeometry.vertices();
             if (vertices && vertices.length > 0) {
               return vertices.map(v => ({ x: v.x(), y: v.y(), z: v.z() || 0 }));
             }
           }
           
           // Try to get it as a polyline
-          if (typeof this.asPolyline === 'function') {
-            const polyline = this.asPolyline();
+          if (typeof qgsGeometry.asPolyline === 'function') {
+            const polyline = qgsGeometry.asPolyline();
             if (polyline && polyline.length > 0) {
               return polyline.map(p => ({ x: p.x(), y: p.y(), z: p.z() || 0 }));
             }
@@ -157,7 +180,7 @@ Item {
     // Try to get features by ID, starting from 0
     // Since we don't know how many features there are, we'll try a reasonable number
     let featuresFound = 0;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 3; i++) {
       const featureId = i.toString();
       const feature = testPipesLayer.getFeature(featureId);
       
@@ -200,7 +223,6 @@ Item {
           "qgsGeometry": feature.geometry,
           "crs": testPipesLayer.crs
         });
-        
         if (wrapper) {
           logMsg("Created wrapper for feature: " + feature.id);
           try {
@@ -289,24 +311,79 @@ Item {
       if (!feature.geometry) continue;
       
       featuresFound++;
+      logMsg("Found feature " + featureId + ", analyzing geometry...");
+      
+      // Log geometry type and properties
+      const geomType = feature.geometry.type;
+      logMsg("Geometry type: " + geomType);
+      
+      // Check if this is a valid geometry for a pipe (should be LineString)
+      if (geomType !== 'LineString') {
+        logMsg("WARNING: Feature " + featureId + " is not a LineString! It's a " + geomType);
+      }
+      
+      // Create a manual WKT parser to extract vertices
+      if (feature.geometry.asWkt) {
+        try {
+          const wkt = feature.geometry.asWkt();
+          logMsg("WKT: " + wkt);
+          
+          // If it's a LINESTRING, try to parse it manually
+          if (wkt.startsWith("LINESTRING")) {
+            // Extract points from WKT: LINESTRING(x1 y1, x2 y2)
+            const coordsText = wkt.substring(wkt.indexOf("(") + 1, wkt.lastIndexOf(")"));
+            const coordPairs = coordsText.split(",");
+            
+            logMsg("Found " + coordPairs.length + " coordinate pairs in WKT");
+            
+            if (coordPairs.length > 0) {
+              // Log the first and last points
+              const firstPair = coordPairs[0].trim().split(" ");
+              logMsg("First WKT point: (" + firstPair[0] + ", " + firstPair[1] + ")");
+              
+              if (coordPairs.length > 1) {
+                const lastPair = coordPairs[coordPairs.length-1].trim().split(" ");
+                logMsg("Last WKT point: (" + lastPair[0] + ", " + lastPair[1] + ")");
+              }
+            }
+          }
+        } catch (e) {
+          logMsg("Error parsing WKT: " + e);
+        }
+      } else {
+        logMsg("No asWkt method available on geometry");
+      }
       
       // Create a geometry wrapper instance
       let wrapper = geometryWrapperComponentGlobal.createObject(null, {
         "qgsGeometry": feature.geometry,
         "crs": testPipesLayer.crs
       });
+      if (!wrapper) {
+        logMsg("Failed to create geometry wrapper");
+        continue;
+      }
       
-      if (!wrapper) continue;
+      // Try different ways to access vertices
+      if (wrapper.qgsGeometry.asGeoJson) {
+        try {
+          const geoJson = wrapper.qgsGeometry.asGeoJson();
+          logMsg("GeoJSON: " + geoJson);
+        } catch (e) {
+          logMsg("Error getting GeoJSON: " + e);
+        }
+      }
       
       // Get the vertices from the geometry
       const vertices = wrapper.getVerticesAsArray();
       if (!vertices || vertices.length === 0) {
+        logMsg("No vertices found using wrapper.getVerticesAsArray()");
         wrapper.destroy();
         continue;
       }
       
       // Log information about the vertices
-      logMsg("Feature " + feature.id + " has " + vertices.length + " vertices");
+      logMsg("Feature " + featureId + " has " + vertices.length + " vertices");
       
       // Log the first vertex
       const firstPoint = vertices[0];
