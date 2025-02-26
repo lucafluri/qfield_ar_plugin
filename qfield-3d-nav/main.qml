@@ -978,7 +978,7 @@ Item {
               DefaultMaterial {
                 diffuseColor: pipeColor
                 specularAmount: 0.5
-                roughness: 0.2
+                shininess: 50
               }
             ]
           }
@@ -1070,7 +1070,7 @@ Item {
               DefaultMaterial {
                 diffuseColor: "red"
                 specularAmount: 0.5
-                roughness: 0.2
+                shininess: 50
               }
             ]
           }
@@ -1092,7 +1092,7 @@ Item {
               DefaultMaterial {
                 diffuseColor: index === 0 ? "green" : "blue"
                 specularAmount: 0.5
-                roughness: 0.2
+                shininess: 50
               }
             ]
           }
