@@ -785,14 +785,25 @@ Item {
       radius: 5
       z: 100  // Ensure it's on top of other elements
       
-      ScrollView {
-        id: debugScrollView
+      Flickable {
+        id: debugFlickable
         anchors.fill: parent
         anchors.margins: 2
+        contentWidth: debugTextArea.width
+        contentHeight: debugTextArea.height
         clip: true
+        
+        // Add a ScrollBar
+        ScrollBar.vertical: ScrollBar {
+          id: vScrollBar
+          active: true
+          visible: debugFlickable.contentHeight > debugFlickable.height
+        }
         
         TextArea { 
           id: debugTextArea
+          width: debugFlickable.width
+          height: Math.max(debugFlickable.height, implicitHeight)
           text: pipe_text
           font: Theme.defaultFont
           color: "white"
@@ -807,7 +818,7 @@ Item {
             cursorPosition = text.length
             // Ensure the cursor/newest text is visible
             Qt.callLater(function() {
-              debugScrollView.ScrollBar.vertical.position = 1.0
+              debugFlickable.contentY = debugFlickable.contentHeight - debugFlickable.height
             })
           }
         }
