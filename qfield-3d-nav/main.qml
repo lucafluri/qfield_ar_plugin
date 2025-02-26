@@ -99,7 +99,7 @@ Item {
         const pointList = wrapper.pointList();
         if (pointList && pointList.length > 0) {
           // Calculate distance to first point of the feature
-          const dx = pointList[0].x() - currentPosition[0];
+          const dx = pointList[0].x() - currentPosition[0]; 
           const dy = pointList[0].y() - currentPosition[1];
           const dz = (pointList[0].z() || 0) - currentPosition[2];
           const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
