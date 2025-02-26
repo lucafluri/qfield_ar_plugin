@@ -129,13 +129,19 @@ Item {
     // 1) Show toast inside QField
     iface.mainWindow().displayToast(msg, 3)
 
-    // 2) Also store in pipe_text so it appears in the UI
-    pipe_text += "\n" + msg
-
-    // 3) Keep only the last 10 lines to ensure all are visible
-    const lines = pipe_text.split("\n");
-    if (lines.length > 10) {
-      pipe_text = lines.slice(-10).join("\n");
+    // 2) Format as a scrolling line of text
+    // If the pipe_text is empty, just use the message
+    if (pipe_text === "") {
+      pipe_text = msg;
+    } else {
+      // Add the new message to the end
+      pipe_text = pipe_text + " | " + msg;
+      
+      // Keep only the last 8 messages to ensure it doesn't get too long
+      const messages = pipe_text.split(" | ");
+      if (messages.length > 8) {
+        pipe_text = messages.slice(-8).join(" | ");
+      }
     }
   }
 
@@ -763,37 +769,15 @@ Item {
       color: "white"
     }
 
-    Rectangle {
-      id: debugContainer
+    Text {
+      id: debugLogText
       anchors.top: gpsAccuracyText.bottom
       anchors.left: parent.left
-      anchors.right: parent.right
-      anchors.margins: 5
-      height: font.pixelSize * 10  // Approximately 8-10 lines of text
-      color: "black"
-      opacity: 0.5
-      radius: 5
-      z: 100  // Ensure it's on top of other elements
-      
-      TextArea { 
-        id: debugTextArea
-        anchors.fill: parent
-        anchors.margins: 2
-        text: pipe_text
-        font: Theme.defaultFont
-        color: "white"
-        readOnly: true
-        wrapMode: TextEdit.Wrap
-        clip: true
-        background: Rectangle {
-          color: "transparent"
-        }
-        
-        // Auto-scroll to bottom when new content is added
-        onTextChanged: {
-          cursorPosition = text.length
-        }
-      }
+      text: pipe_text
+      font: Theme.defaultFont
+      color: "yellow"  // Make debug logs stand out with a different color
+      wrapMode: Text.Wrap
+      width: parent.width - 10  // Allow some margin
     }
 
     //----------------------------------
