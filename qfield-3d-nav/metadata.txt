@@ -3,5 +3,5 @@ name=AR_Test
 description=...
 author=OPENGIS.ch and FHNW
 icon=icon.svg
-version=1.05
+version=1.01
 homepage=https://www.opengis.ch/

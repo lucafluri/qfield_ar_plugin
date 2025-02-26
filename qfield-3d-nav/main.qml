@@ -791,7 +791,7 @@ Item {
         anchors.margins: 2
         clip: true
         
-        TextArea {
+        TextArea { 
           id: debugTextArea
           text: pipe_text
           font: Theme.defaultFont
