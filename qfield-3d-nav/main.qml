@@ -32,7 +32,7 @@ Item {
   property var currentPosition: [0, 0, 0]
   property double currentOrientation: 0
   property double currentTilt: 90
-  property string debugLogText: ""  // Add property for debug log text
+  property string debugLogText: ""  // Debug Text
   
   property var pipeFeatures: []
   
