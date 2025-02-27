@@ -538,9 +538,14 @@ Item {
     if (!plugin.currentPosition || !pipeFeatures.length) return;
     
     logMsg("===== Starting distance calculation =====");
-    logMsg("Current position system: " + (positionSource.crs ? positionSource.crs.authid : "unknown"));
-    logMsg("Layer coordinate system: " + (plugin.testPipesLayer.crs ? plugin.testPipesLayer.crs.authid : "unknown"));
-
+    
+    // Get CRS information
+    const posCrs = getPositionCrs();
+    const layerCrs = plugin.testPipesLayer ? plugin.testPipesLayer.crs : null;
+    
+    logMsg("Current position system: " + (posCrs ? posCrs.authid : "unknown"));
+    logMsg("Layer coordinate system: " + (layerCrs ? layerCrs.authid : "unknown"));
+    
     const currentPos = plugin.currentPosition;
     logMsg("Current projected position: " + currentPos[0].toFixed(2) + ", " + currentPos[1].toFixed(2));
     
@@ -554,13 +559,16 @@ Item {
       try {
         logMsg("Processing pipe feature #" + idx);
 
+        // Get position CRS
+        const posCrs = getPositionCrs();
+        
         // Transform the feature geometry to the same CRS as the position
         const transformedGeometry = transformGeometryToProjectedCRS(feature.geometry, plugin.testPipesLayer.crs);
         
         // Create a geometry wrapper for the transformed geometry
         let wrapper = geometryWrapperComponentGlobal.createObject(null, {
           "qgsGeometry": transformedGeometry,
-          "crs": positionSource.crs
+          "crs": posCrs
         });
           
         if (wrapper) {
@@ -644,14 +652,15 @@ Item {
         return geometry;
       }
       
-      if (!positionSource.crs) {
+      // Get position CRS using our helper
+      let destCrs = getPositionCrs();
+      if (!destCrs) {
         logMsg("Warning: Position CRS is missing");
         return geometry;
       }
       
       // Try to get CRS information
       let srcCrs = layerCRS;
-      let destCrs = positionSource.crs;
       
       // Log CRS information
       logMsg("Transforming from: " + (srcCrs ? srcCrs.authid : "Unknown") + 
@@ -683,6 +692,30 @@ Item {
   }
   
   //----------------------------------
+  // Helper function to get position CRS
+  //----------------------------------
+  function getPositionCrs() {
+    try {
+      // Create a temporary geometry wrapper to access its CRS
+      let tempWrapper = geometryWrapperComponentGlobal.createObject(null);
+      if (tempWrapper) {
+        let crs = tempWrapper.crs;
+        logMsg("Retrieved CRS from geometry wrapper: " + (crs ? crs.authid : "null"));
+        
+        // Clean up
+        tempWrapper.destroy();
+        return crs;
+      } else {
+        logMsg("Failed to create temporary geometry wrapper");
+        return null;
+      }
+    } catch (e) {
+      logMsg("Error getting CRS from wrapper: " + e.toString());
+      return null;
+    }
+  }
+  
+  //----------------------------------
   // Keep track of position changes
   //----------------------------------
   Connections {
@@ -696,7 +729,7 @@ Item {
 
         // Log the coordinate system information
         if (plugin.positions.length === 0) {
-          logMsg("Position source CRS: " + (positionSource.crs ? positionSource.crs.authid : "Unknown"));
+          logMsg("Position source CRS: " + (positionSource.crs ? positionSource.crs.authid : "unknown"));
           logMsg("Raw position: " + positionSource.positionInformation.longitude + ", " + 
                 positionSource.positionInformation.latitude);
           logMsg("Projected position: " + positionSource.projectedPosition.x + ", " + 
@@ -882,10 +915,13 @@ Item {
                 // Get the geometry points from the pipe feature
                 let pos = []
                 
+                // Get position CRS
+                const posCrs = getPositionCrs();
+                
                 // Create a geometry wrapper instance
                 let wrapper = geometryWrapperComponentGlobal.createObject(null, {
                   "qgsGeometry": transformGeometryToProjectedCRS(modelData.geometry, plugin.testPipesLayer.crs),
-                  "crs": positionSource.crs
+                  "crs": posCrs
                 });
                 
                 if (wrapper) {
@@ -1386,20 +1422,19 @@ Item {
   
   // Initialize when plugin loads
   Component.onCompleted: {
-    logMsg("QField 3D Navigation Plugin v1.07 loaded");
-    logMsg("Enhanced coordinate system handling and distance calculation");
+    logMsg("QField 3D Navigation Plugin v1.08 loaded");
+    logMsg("Enhanced coordinate system handling with geometry wrapper CRS");
     
     // Log CRS information
     try {
+      // Get position CRS using our helper
+      const posCrs = getPositionCrs();
+      logMsg("Position CRS from helper: " + (posCrs ? posCrs.authid : "Not available"));
+      
       if (positionSource) {
-        logMsg("Position source CRS: " + (positionSource.crs ? positionSource.crs.authid : "Not available"));
+        logMsg("Position source available: " + (positionSource ? "yes" : "no"));
       } else {
         logMsg("Position source not available");
-      }
-      
-      if (iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
-        logMsg("Map canvas CRS: " + (iface.mapCanvas.mapSettings.destinationCrs ? 
-               iface.mapCanvas.mapSettings.destinationCrs.authid : "Not available"));
       }
     } catch (e) {
       logMsg("Error getting CRS information: " + e.toString());
