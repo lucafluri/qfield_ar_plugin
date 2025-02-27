@@ -19,6 +19,8 @@ Item {
   property var positionSource: iface.findItemByObjectName('positionSource')
   property var projectUtils: ProjectUtils
 
+  // Store CRS information for fallback
+  property var mapCrs: null 
 
   property var testPipesLayer
   property string pipe_text: ""
@@ -502,8 +504,14 @@ Item {
     if (!plugin.currentPosition || !pipeFeatures.length) return;
     
     logMsg("===== Starting distance calculation =====");
-    logMsg("Current position system: " + (positionSource.crs ? positionSource.crs.authid : "unknown"));
-    logMsg("Layer coordinate system: " + (plugin.testPipesLayer.crs ? plugin.testPipesLayer.crs.authid : "unknown"));
+    
+    // Use fallback CRS if needed
+    const posCRS = positionSource.crs || plugin.mapCrs;
+    const layerCRS = plugin.testPipesLayer ? plugin.testPipesLayer.crs : null;
+    
+    logMsg("Current position system: " + (posCRS ? posCRS.authid : "unknown"));
+    logMsg("Layer coordinate system: " + (layerCRS ? layerCRS.authid : "unknown"));
+    logMsg("Map canvas CRS: " + (plugin.mapCrs ? plugin.mapCrs.authid : "unknown"));
 
     const currentPos = plugin.currentPosition;
     logMsg("Current projected position: " + currentPos[0].toFixed(2) + ", " + currentPos[1].toFixed(2));
@@ -519,12 +527,12 @@ Item {
         logMsg("Processing pipe feature #" + idx);
 
         // Transform the feature geometry to the same CRS as the position
-        const transformedGeometry = transformGeometryToProjectedCRS(feature.geometry, plugin.testPipesLayer.crs);
+        const transformedGeometry = transformGeometryToProjectedCRS(feature.geometry, layerCRS);
         
         // Create a geometry wrapper for the transformed geometry
         let wrapper = geometryWrapperComponentGlobal.createObject(null, {
           "qgsGeometry": transformedGeometry,
-          "crs": positionSource.crs
+          "crs": posCRS
         });
           
         if (wrapper) {
@@ -557,24 +565,53 @@ Item {
   function transformGeometryToProjectedCRS(geometry, layerCRS) {
     try {
       // Check if we need coordinate transformation
-      if (!layerCRS || !positionSource.crs) {
-        logMsg("Warning: Cannot transform coordinates, CRS information missing");
+      if (!geometry) {
+        logMsg("Error: Cannot transform null geometry");
         return geometry;
       }
       
-      if (layerCRS.authid === positionSource.crs.authid) {
-        logMsg("Layer and position use the same CRS, no transformation needed");
+      // Create a copy of the geometry to not modify the original
+      const geomCopy = QgsGeometry.fromWkt(geometry.asWkt());
+      if (!geomCopy) {
+        logMsg("Error: Failed to create geometry copy");
         return geometry;
+      }
+
+      // Get position CRS, falling back to map CRS if needed
+      const posCRS = positionSource.crs || plugin.mapCrs;
+      
+      if (!layerCRS) {
+        logMsg("Warning: Layer CRS is missing, using map canvas CRS as fallback");
+        layerCRS = plugin.mapCrs;
+      }
+      
+      if (!posCRS) {
+        logMsg("Error: Position CRS is missing and no fallback available");
+        return geomCopy;
+      }
+      
+      // Log CRS information for debugging
+      logMsg("Transforming geometry from " + (layerCRS ? layerCRS.authid : "Unknown") + 
+             " to " + (posCRS ? posCRS.authid : "Unknown"));
+      
+      if (layerCRS && posCRS && layerCRS.authid === posCRS.authid) {
+        logMsg("Layer and position use the same CRS, no transformation needed");
+        return geomCopy;
       }
       
       // Create a new geometry in the projected CRS
-      let transformedGeometry = geometry.transform(layerCRS, positionSource.crs);
-      if (transformedGeometry) {
-        logMsg("Successfully transformed geometry from " + layerCRS.authid + " to " + positionSource.crs.authid);
-        return transformedGeometry;
+      if (layerCRS && posCRS) {
+        let transformedGeometry = geomCopy.transform(layerCRS, posCRS);
+        if (transformedGeometry) {
+          logMsg("Successfully transformed geometry from " + layerCRS.authid + " to " + posCRS.authid);
+          return transformedGeometry;
+        } else {
+          logMsg("Warning: Transformation failed, using original geometry");
+          return geomCopy;
+        }
       } else {
-        logMsg("Warning: Transformation failed, using original geometry");
-        return geometry;
+        logMsg("Warning: Cannot transform, missing CRS information");
+        return geomCopy;
       }
     } catch (e) {
       logMsg("Error in transformGeometryToProjectedCRS: " + e.toString());
@@ -785,7 +822,7 @@ Item {
                 // Create a geometry wrapper instance
                 let wrapper = geometryWrapperComponentGlobal.createObject(null, {
                   "qgsGeometry": transformGeometryToProjectedCRS(modelData.geometry, plugin.testPipesLayer.crs),
-                  "crs": positionSource.crs
+                  "crs": positionSource.crs || plugin.mapCrs
                 });
                 
                 if (wrapper) {
@@ -1286,8 +1323,15 @@ Item {
   
   // Initialize when plugin loads
   Component.onCompleted: {
-    logMsg("QField 3D Navigation Plugin v1.07 loaded");
-    logMsg("Enhanced MultiLineString support and debugging tools added");
+    logMsg("QField 3D Navigation Pluginloaded");
+    
+    // Store map CRS for fallback
+    if (iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
+      logMsg("Map Canvas CRS: " + (iface.mapCanvas.mapSettings.destinationCrs ? iface.mapCanvas.mapSettings.destinationCrs.authid : "Unknown"));
+      plugin.mapCrs = iface.mapCanvas.mapSettings.destinationCrs;
+    } else {
+      logMsg("Map Canvas not available");
+    }
     
     // Add plugin button to toolbar
     iface.addItemToPluginsToolbar(pluginButton);
