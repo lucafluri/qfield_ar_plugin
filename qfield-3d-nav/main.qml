@@ -29,7 +29,6 @@ Item {
   property var fakePipeEnd: [0, 0, 0]
 
   property var positions: []
-  property var currentPosition: [0, 0, 0]
   property double currentOrientation: 0
   property double currentTilt: 90
   property string debugLogText: ""  // Add property for debug log text
@@ -518,9 +517,9 @@ Item {
               logMsg("Successfully extracted " + vertices.length + " vertices");
               
               // Calculate distance to first point of the feature
-              const dx = vertices[0].x - currentPosition[0];
-              const dy = vertices[0].y - currentPosition[1];
-              const dz = (vertices[0].z || 0) - currentPosition[2];
+              const dx = vertices[0].x - plugin.currentPosition[0];
+              const dy = vertices[0].y - plugin.currentPosition[1];
+              const dz = (vertices[0].z || 0) - plugin.currentPosition[2];
               const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
               
               logMsg("Distance to feature " + feature.id + " (first point): " + dist.toFixed(2) + " m");
@@ -528,9 +527,9 @@ Item {
               // If there are multiple points, also calculate distance to last point
               if (vertices.length > 1) {
                 const lastPoint = vertices[vertices.length - 1];
-                const dx2 = lastPoint.x - currentPosition[0];
-                const dy2 = lastPoint.y - currentPosition[1];
-                const dz2 = (lastPoint.z || 0) - currentPosition[2];
+                const dx2 = lastPoint.x - plugin.currentPosition[0];
+                const dy2 = lastPoint.y - plugin.currentPosition[1];
+                const dz2 = (lastPoint.z || 0) - plugin.currentPosition[2];
                 const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
                 
                 logMsg("Distance to feature " + feature.id + " (last point): " + dist2.toFixed(2) + " m");
@@ -547,7 +546,7 @@ Item {
                   
                   // Find closest point on line segment
                   const segmentDist = calculateDistanceToLineSegment(
-                    currentPosition, 
+                    plugin.currentPosition, 
                     [p1.x, p1.y, p1.z || 0], 
                     [p2.x, p2.y, p2.z || 0]
                   );
@@ -655,7 +654,7 @@ Item {
           ]
         }
 
-        gpsPositionText.text = 'GPS Position: ' + x + ', ' + y
+        gpsPositionText.text = 'GPS Position: ' + plugin.currentPosition[0] + ', ' + plugin.currentPosition[1]
         gpsAccuracyText.text = 'Accuracy: ' + positionSource.supportedPositioningMethods
         
         // Update distances to pipe features when position changes
@@ -716,7 +715,7 @@ Item {
           [x,     y,    -5]
         ]
 
-        gpsPositionText.text = 'GPS Position: ' + x + ', ' + y
+        gpsPositionText.text = 'GPS Position: ' + plugin.currentPosition[0] + ', ' + plugin.currentPosition[1]
         gpsAccuracyText.text = 'Accuracy: ' + positionSource.sourceError
       }
     }
@@ -1165,7 +1164,7 @@ Item {
       id: gpsPositionText
       anchors.top: tiltReadingText.bottom
       anchors.left: parent.left
-      text: 'GPS Position: ' + currentPosition[0] + ', ' + currentPosition[1]
+      text: 'GPS Position: ' + plugin.currentPosition[0] + ', ' + plugin.currentPosition[1]
       font: Theme.defaultFont
       color: "green"
     }
