@@ -487,140 +487,101 @@ Item {
     }
   }
 
-  function logPipeDistances() {
-    if (!testPipesLayer || !pipeFeatures || pipeFeatures.length === 0) {
-      logMsg("Cannot calculate distances - pipe features not loaded");
-      return;
+  function calculateDistance(pointA, pointB) {
+    try {
+      let dx = pointA[0] - pointB[0];
+      let dy = pointA[1] - pointB[1];
+      return Math.sqrt(dx * dx + dy * dy);
+    } catch (e) {
+      logMsg("Error in calculateDistance: " + e.toString());
+      return -1;
     }
-    
-    logMsg("===== Calculating distances to pipe features =====");
-    
-    for (let i = 0; i < pipeFeatures.length; i++) {
-      try {
-        const feature = pipeFeatures[i];
-        
-        logMsg("Processing feature: " + feature.id);
-        
-        // Perform detailed geometry analysis first
-        analyzeGeometry(feature.geometry);
-        
-        // Create a geometry wrapper instance
-        let wrapper = geometryWrapperComponentGlobal.createObject(null, {
-          "qgsGeometry": feature.geometry,
-          "crs": testPipesLayer.crs
-        });
-        
-        if (wrapper) {
-          logMsg("Created wrapper for feature: " + feature.id);
-          try {
-            const vertices = wrapper.getVerticesAsArray();
-            if (vertices && vertices.length > 0) {
-              logMsg("Successfully extracted " + vertices.length + " vertices");
-              
-              // Log the coordinate system and sample coordinates
-              logMsg("Layer CRS: " + (testPipesLayer.crs ? testPipesLayer.crs.authid : "Unknown"));
-              logMsg("Current position: " + plugin.currentPosition[0] + ", " + plugin.currentPosition[1]);
-              logMsg("First vertex: " + vertices[0].x + ", " + vertices[0].y);
-              
-              // Calculate distance to first point of the feature
-              const dx = vertices[0].x - plugin.currentPosition[0];
-              const dy = vertices[0].y - plugin.currentPosition[1];
-              const dz = (vertices[0].z || 0) - plugin.currentPosition[2];
-              const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-              
-              logMsg("Distance to feature " + feature.id + " (first point): " + dist.toFixed(2) + " m");
-              
-              // If there are multiple points, also calculate distance to last point
-              if (vertices.length > 1) {
-                const lastPoint = vertices[vertices.length - 1];
-                const dx2 = lastPoint.x - plugin.currentPosition[0];
-                const dy2 = lastPoint.y - plugin.currentPosition[1];
-                const dz2 = (lastPoint.z || 0) - plugin.currentPosition[2];
-                const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
-                
-                logMsg("Distance to feature " + feature.id + " (last point): " + dist2.toFixed(2) + " m");
-                
-                // Calculate the closest point on the line if there are multiple vertices
-                let minDist = dist;
-                let closestSegment = 0;
-                
-                for (let j = 0; j < vertices.length - 1; j++) {
-                  // Simple line segment distance calculation
-                  // This is simplified and doesn't handle projection issues
-                  const p1 = vertices[j];
-                  const p2 = vertices[j + 1];
-                  
-                  // Find closest point on line segment
-                  const segmentDist = calculateDistanceToLineSegment(
-                    plugin.currentPosition, 
-                    [p1.x, p1.y, p1.z || 0], 
-                    [p2.x, p2.y, p2.z || 0]
-                  );
-                  
-                  if (segmentDist < minDist) {
-                    minDist = segmentDist;
-                    closestSegment = j;
-                  }
-                }
-                
-                logMsg("Closest approach to feature " + feature.id + ": " + minDist.toFixed(2) + " m (segment " + closestSegment + ")");
-              }
-            } else {
-              logMsg("No vertices found for feature " + feature.id);
-            }
-          } catch (e) {
-            logMsg("Error while getting vertices for feature " + feature.id + ": " + e.toString());
-          }
-          
-          wrapper.destroy();
-        } else {
-          logMsg("Failed to create wrapper for feature " + feature.id);
-        }
-      } catch (e) {
-        logMsg("Error while processing feature: " + e.toString());
-      }
-    }
-    
-    logMsg("===== Distance calculation complete =====");
-  }
-  
-  // Helper function to calculate distance from a point to a line segment
-  function calculateDistanceToLineSegment(point, lineStart, lineEnd) {
-    // Vectors
-    const v = [lineEnd[0] - lineStart[0], lineEnd[1] - lineStart[1], lineEnd[2] - lineStart[2]];
-    const w = [point[0] - lineStart[0], point[1] - lineStart[1], point[2] - lineStart[2]];
-    
-    // Squared length of line segment
-    const c1 = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-    
-    // If segment is a point, just return distance to the point
-    if (c1 < 0.0000001) {
-      const dx = point[0] - lineStart[0];
-      const dy = point[1] - lineStart[1];
-      const dz = point[2] - lineStart[2];
-      return Math.sqrt(dx*dx + dy*dy + dz*dz);
-    }
-    
-    // Projection of w onto v, normalized by length of v
-    const b = (w[0]*v[0] + w[1]*v[1] + w[2]*v[2]) / c1;
-    
-    // Clamp to segment
-    const pb = Math.max(0, Math.min(1, b));
-    
-    // Calculate closest point on line
-    const closest = [
-      lineStart[0] + pb * v[0],
-      lineStart[1] + pb * v[1],
-      lineStart[2] + pb * v[2]
-    ];
-    
-    // Return distance to closest point
-    const dx = point[0] - closest[0];
-    const dy = point[1] - closest[1];
-    const dz = point[2] - closest[2];
-    return Math.sqrt(dx*dx + dy*dy + dz*dz);
   }
 
+  function logPipeDistances() {
+    if (!plugin.currentPosition || !pipeFeatures.length) return;
+    
+    logMsg("===== Starting distance calculation =====");
+    logMsg("Current position system: " + (positionSource.crs ? positionSource.crs.authid : "unknown"));
+    logMsg("Layer coordinate system: " + (plugin.testPipesLayer.crs ? plugin.testPipesLayer.crs.authid : "unknown"));
+
+    const currentPos = plugin.currentPosition;
+    logMsg("Current projected position: " + currentPos[0].toFixed(2) + ", " + currentPos[1].toFixed(2));
+    
+    // Add raw position info
+    if (positionSource.positionInformation.longitudeValid && positionSource.positionInformation.latitudeValid) {
+      logMsg("Current raw position: " + positionSource.positionInformation.longitude.toFixed(6) + 
+            ", " + positionSource.positionInformation.latitude.toFixed(6));
+    }
+    
+    pipeFeatures.forEach(function(feature, idx) {
+      try {
+        logMsg("Processing pipe feature #" + idx);
+
+        // Transform the feature geometry to the same CRS as the position
+        const transformedGeometry = transformGeometryToProjectedCRS(feature.geometry, plugin.testPipesLayer.crs);
+        
+        // Create a geometry wrapper for the transformed geometry
+        let wrapper = geometryWrapperComponentGlobal.createObject(null, {
+          "qgsGeometry": transformedGeometry,
+          "crs": positionSource.crs
+        });
+          
+        if (wrapper) {
+          // Get distance using the closest point on the pipe to our position
+          let closestPoint = wrapper.closestPoint(currentPos);
+          if (closestPoint && closestPoint.length >= 2) {
+            let distance = calculateDistance(currentPos, [closestPoint[0], closestPoint[1]]);
+            logMsg("Distance to pipe #" + idx + ": " + distance.toFixed(2) + " meters");
+            
+            // Update the feature's distance property
+            feature.distance = distance;
+          } else {
+            logMsg("Failed to find closest point on pipe #" + idx);
+          }
+          
+          // Clean up
+          wrapper.destroy();
+        } else {
+          logMsg("Failed to create geometry wrapper for pipe #" + idx);
+        }
+      } catch (e) {
+        logMsg("Error calculating distance for pipe #" + idx + ": " + e.toString());
+      }
+    });
+  }
+  
+  //----------------------------------
+  // Helper to transform coordinates
+  //----------------------------------
+  function transformGeometryToProjectedCRS(geometry, layerCRS) {
+    try {
+      // Check if we need coordinate transformation
+      if (!layerCRS || !positionSource.crs) {
+        logMsg("Warning: Cannot transform coordinates, CRS information missing");
+        return geometry;
+      }
+      
+      if (layerCRS.authid === positionSource.crs.authid) {
+        logMsg("Layer and position use the same CRS, no transformation needed");
+        return geometry;
+      }
+      
+      // Create a new geometry in the projected CRS
+      let transformedGeometry = geometry.transform(layerCRS, positionSource.crs);
+      if (transformedGeometry) {
+        logMsg("Successfully transformed geometry from " + layerCRS.authid + " to " + positionSource.crs.authid);
+        return transformedGeometry;
+      } else {
+        logMsg("Warning: Transformation failed, using original geometry");
+        return geometry;
+      }
+    } catch (e) {
+      logMsg("Error in transformGeometryToProjectedCRS: " + e.toString());
+      return geometry;
+    }
+  }
+  
   //----------------------------------
   // Keep track of position changes
   //----------------------------------
@@ -677,8 +638,6 @@ Item {
           ]
         }
 
-        gpsAccuracyText.text = 'Accuracy: ' + positionSource.supportedPositioningMethods
-        
         // Update distances to pipe features when position changes
         if (threeDNavigationPopup.visible && testPipesLayer && pipeFeatures.length > 0) {
           logPipeDistances();
@@ -738,7 +697,6 @@ Item {
         ]
 
         gpsPositionText.text = 'GPS Projected: ' + plugin.currentPosition[0].toFixed(2) + ', ' + plugin.currentPosition[1].toFixed(2);
-        gpsAccuracyText.text = 'Accuracy: ' + positionSource.supportedPositioningMethods
         
         // Update raw GPS coordinates display
         if (positionSource.positionInformation.longitudeValid && positionSource.positionInformation.latitudeValid) {
@@ -826,8 +784,8 @@ Item {
                 
                 // Create a geometry wrapper instance
                 let wrapper = geometryWrapperComponentGlobal.createObject(null, {
-                  "qgsGeometry": modelData.geometry,
-                  "crs": plugin.testPipesLayer.crs
+                  "qgsGeometry": transformGeometryToProjectedCRS(modelData.geometry, plugin.testPipesLayer.crs),
+                  "crs": positionSource.crs
                 });
                 
                 if (wrapper) {
