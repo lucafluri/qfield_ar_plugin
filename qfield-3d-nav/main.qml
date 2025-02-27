@@ -80,8 +80,8 @@ Item {
                     const startIdx = wkt.indexOf("((");
                     const endIdx = wkt.lastIndexOf("))");
                     
-                    if (startIdx === -1 || endIdx === -1) {
-                      logMsg("Invalid MultiLineString format: missing (( or ))");
+                    if (startIdx === -1 || endIdx === -1) { 
+                      logMsg("Invalid MultiLineString format: missing (( or )) or so");
                       throw new Error("Invalid MultiLineString format");
                     }
                     
