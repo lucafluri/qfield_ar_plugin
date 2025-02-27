@@ -655,8 +655,17 @@ Item {
       // Get position CRS using our helper
       let destCrs = getPositionCrs();
       if (!destCrs) {
-        logMsg("Warning: Position CRS is missing");
-        return geometry;
+        logMsg("Warning: Position CRS is missing, using WGS84 as fallback");
+        // Try to create a WGS84 CRS directly
+        if (typeof QgsCoordinateReferenceSystem !== 'undefined') {
+          destCrs = QgsCoordinateReferenceSystem.fromEpsgId(4326);
+          if (!destCrs) {
+            logMsg("Failed to create WGS84 fallback CRS");
+            return geometry;
+          }
+        } else {
+          return geometry;
+        }
       }
       
       // Try to get CRS information
@@ -696,6 +705,25 @@ Item {
   //----------------------------------
   function getPositionCrs() {
     try {
+      // Try to create a CRS directly
+      if (typeof QgsCoordinateReferenceSystem !== 'undefined') {
+        // Create a standard WGS84 CRS (EPSG:4326)
+        let crs = QgsCoordinateReferenceSystem.fromEpsgId(4326);
+        if (crs) {
+          logMsg("Created WGS84 CRS: " + crs.authid);
+          return crs;
+        }
+      }
+      
+      // Try to get CRS from map canvas as fallback
+      if (iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
+        let crs = iface.mapCanvas.mapSettings.destinationCrs;
+        if (crs) {
+          logMsg("Using map canvas CRS: " + crs.authid);
+          return crs;
+        }
+      }
+      
       // Create a temporary geometry wrapper to access its CRS
       let tempWrapper = geometryWrapperComponentGlobal.createObject(null);
       if (tempWrapper) {
@@ -705,12 +733,12 @@ Item {
         // Clean up
         tempWrapper.destroy();
         return crs;
-      } else {
-        logMsg("Failed to create temporary geometry wrapper");
-        return null;
       }
+      
+      logMsg("Failed to create CRS - all methods failed");
+      return null;
     } catch (e) {
-      logMsg("Error getting CRS from wrapper: " + e.toString());
+      logMsg("Error getting CRS: " + e.toString());
       return null;
     }
   }
@@ -1422,7 +1450,7 @@ Item {
   
   // Initialize when plugin loads
   Component.onCompleted: {
-    logMsg("QField 3D Navigation Plugin v1.08 loaded");
+    logMsg("QField 3D Navigation Plugin loaded");
     logMsg("Enhanced coordinate system handling with geometry wrapper CRS");
     
     // Log CRS information
