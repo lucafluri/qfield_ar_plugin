@@ -71,7 +71,7 @@ Item {
                   }
                 }
                 // Parse MultiLineString WKT: MULTILINESTRING((x1 y1, x2 y2), (x3 y3, x4 y4))
-                else if (wkt.startsWith("MULTILINESTRING")) {
+                else if (wkt.startsWith("MultiLineString")) {
                   logMsg("- Detected MultiLineString in WKT");
                   
                   // Extract all linestrings from the MultiLineString
@@ -312,7 +312,7 @@ Item {
           logMsg("- WKT type: " + wktType.trim());
           
           // Advanced WKT analysis based on type
-          if (wkt.startsWith("MULTILINESTRING")) {
+          if (wkt.startsWith("MultiLineString")) {
             logMsg("- Detected MultiLineString in WKT");
             
             // Extract all linestrings from the MultiLineString
