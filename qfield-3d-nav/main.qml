@@ -689,7 +689,7 @@ Item {
         if (geometry) {
           try {
             // Create QgsQuickCoordinateTransformer
-            let transformer = Qt.createQmlObject('import QgsQuick 0.1 as QgsQuick; QgsQuick.CoordinateTransformer { }', plugin);
+            let transformer = new QgsQuick.CoordinateTransformer();
             
             // Configure the transformer
             transformer.sourceCrs = srcCrs;
