@@ -19,8 +19,6 @@ Item {
   property var positionSource: iface.findItemByObjectName('positionSource')
   property var projectUtils: ProjectUtils
 
-  // Store CRS information for fallback
-  property var mapCrs: null 
 
   property var testPipesLayer
   property string pipe_text: ""
@@ -500,18 +498,48 @@ Item {
     }
   }
 
+  // Helper function to find closest point on a line segment
+  function closestPointOnLineSegment(point, lineStart, lineEnd) {
+    try {
+      // Line segment vector
+      const vx = lineEnd[0] - lineStart[0];
+      const vy = lineEnd[1] - lineStart[1];
+      
+      // Vector from line start to point
+      const wx = point[0] - lineStart[0];
+      const wy = point[1] - lineStart[1];
+      
+      // Squared length of line segment
+      const c1 = vx * vx + vy * vy;
+      
+      // If segment is a point, just return the start point
+      if (c1 < 0.0000001) {
+        return [lineStart[0], lineStart[1]];
+      }
+      
+      // Projection of w onto v, normalized by length of v
+      const b = (wx * vx + wy * vy) / c1;
+      
+      // Clamp to segment
+      const pb = Math.max(0, Math.min(1, b));
+      
+      // Calculate closest point on line
+      return [
+        lineStart[0] + pb * vx,
+        lineStart[1] + pb * vy
+      ];
+    } catch (e) {
+      logMsg("Error in closestPointOnLineSegment: " + e.toString());
+      return null;
+    }
+  }
+
   function logPipeDistances() {
     if (!plugin.currentPosition || !pipeFeatures.length) return;
     
     logMsg("===== Starting distance calculation =====");
-    
-    // Use fallback CRS if needed
-    const posCRS = positionSource.crs || plugin.mapCrs;
-    const layerCRS = plugin.testPipesLayer ? plugin.testPipesLayer.crs : null;
-    
-    logMsg("Current position system: " + (posCRS ? posCRS.authid : "unknown"));
-    logMsg("Layer coordinate system: " + (layerCRS ? layerCRS.authid : "unknown"));
-    logMsg("Map canvas CRS: " + (plugin.mapCrs ? plugin.mapCrs.authid : "unknown"));
+    logMsg("Current position system: " + (positionSource.crs ? positionSource.crs.authid : "unknown"));
+    logMsg("Layer coordinate system: " + (plugin.testPipesLayer.crs ? plugin.testPipesLayer.crs.authid : "unknown"));
 
     const currentPos = plugin.currentPosition;
     logMsg("Current projected position: " + currentPos[0].toFixed(2) + ", " + currentPos[1].toFixed(2));
@@ -527,28 +555,68 @@ Item {
         logMsg("Processing pipe feature #" + idx);
 
         // Transform the feature geometry to the same CRS as the position
-        const transformedGeometry = transformGeometryToProjectedCRS(feature.geometry, layerCRS);
+        const transformedGeometry = transformGeometryToProjectedCRS(feature.geometry, plugin.testPipesLayer.crs);
         
         // Create a geometry wrapper for the transformed geometry
         let wrapper = geometryWrapperComponentGlobal.createObject(null, {
           "qgsGeometry": transformedGeometry,
-          "crs": posCRS
+          "crs": positionSource.crs
         });
           
         if (wrapper) {
-          // Get distance using the closest point on the pipe to our position
-          let closestPoint = wrapper.closestPoint(currentPos);
-          if (closestPoint && closestPoint.length >= 2) {
-            let distance = calculateDistance(currentPos, [closestPoint[0], closestPoint[1]]);
-            logMsg("Distance to pipe #" + idx + ": " + distance.toFixed(2) + " meters");
-            
-            // Update the feature's distance property
-            feature.distance = distance;
-          } else {
-            logMsg("Failed to find closest point on pipe #" + idx);
+          // Calculate distance manually using vertices
+          try {
+            const vertices = wrapper.getVerticesAsArray();
+            if (vertices && vertices.length > 0) {
+              // Find the closest vertex
+              let minDist = Number.MAX_VALUE;
+              let closestPoint = null;
+              
+              for (let i = 0; i < vertices.length; i++) {
+                const vertex = vertices[i];
+                const dist = calculateDistance(currentPos, [vertex.x, vertex.y]);
+                if (dist < minDist) {
+                  minDist = dist;
+                  closestPoint = [vertex.x, vertex.y];
+                }
+              }
+              
+              // Also check distances to line segments for more accuracy
+              for (let i = 0; i < vertices.length - 1; i++) {
+                const p1 = vertices[i];
+                const p2 = vertices[i + 1];
+                
+                // Find closest point on line segment
+                const segmentPoint = closestPointOnLineSegment(
+                  currentPos, 
+                  [p1.x, p1.y], 
+                  [p2.x, p2.y]
+                );
+                
+                if (segmentPoint) {
+                  const dist = calculateDistance(currentPos, segmentPoint);
+                  if (dist < minDist) {
+                    minDist = dist;
+                    closestPoint = segmentPoint;
+                  }
+                }
+              }
+              
+              if (closestPoint) {
+                let distance = calculateDistance(currentPos, closestPoint);
+                logMsg("Distance to pipe #" + idx + ": " + distance.toFixed(2) + " meters");
+                
+                // Update the feature's distance property
+                feature.distance = distance;
+              } else {
+                logMsg("Failed to find closest point on pipe #" + idx);
+              }
+            } else {
+              logMsg("No vertices found for pipe #" + idx);
+            }
+          } catch (e) {
+            logMsg("Error calculating distance for pipe #" + idx + ": " + e.toString());
           }
-          
-          // Clean up
           wrapper.destroy();
         } else {
           logMsg("Failed to create geometry wrapper for pipe #" + idx);
@@ -570,48 +638,43 @@ Item {
         return geometry;
       }
       
-      // Create a copy of the geometry to not modify the original
-      const geomCopy = QgsGeometry.fromWkt(geometry.asWkt());
-      if (!geomCopy) {
-        logMsg("Error: Failed to create geometry copy");
+      // Check for CRS information
+      if (!layerCRS) {
+        logMsg("Warning: Layer CRS is missing");
         return geometry;
       }
-
-      // Get position CRS, falling back to map CRS if needed
-      const posCRS = positionSource.crs || plugin.mapCrs;
       
-      if (!layerCRS) {
-        logMsg("Warning: Layer CRS is missing, using map canvas CRS as fallback");
-        layerCRS = plugin.mapCrs;
+      if (!positionSource.crs) {
+        logMsg("Warning: Position CRS is missing");
+        return geometry;
       }
       
-      if (!posCRS) {
-        logMsg("Error: Position CRS is missing and no fallback available");
-        return geomCopy;
-      }
+      // Try to get CRS information
+      let srcCrs = layerCRS;
+      let destCrs = positionSource.crs;
       
-      // Log CRS information for debugging
-      logMsg("Transforming geometry from " + (layerCRS ? layerCRS.authid : "Unknown") + 
-             " to " + (posCRS ? posCRS.authid : "Unknown"));
+      // Log CRS information
+      logMsg("Transforming from: " + (srcCrs ? srcCrs.authid : "Unknown") + 
+             " to: " + (destCrs ? destCrs.authid : "Unknown"));
       
-      if (layerCRS && posCRS && layerCRS.authid === posCRS.authid) {
+      if (srcCrs && destCrs && srcCrs.authid === destCrs.authid) {
         logMsg("Layer and position use the same CRS, no transformation needed");
-        return geomCopy;
+        return geometry;
       }
       
       // Create a new geometry in the projected CRS
-      if (layerCRS && posCRS) {
-        let transformedGeometry = geomCopy.transform(layerCRS, posCRS);
+      if (srcCrs && destCrs) {
+        let transformedGeometry = geometry.transform(srcCrs, destCrs);
         if (transformedGeometry) {
-          logMsg("Successfully transformed geometry from " + layerCRS.authid + " to " + posCRS.authid);
+          logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
           return transformedGeometry;
         } else {
           logMsg("Warning: Transformation failed, using original geometry");
-          return geomCopy;
+          return geometry;
         }
       } else {
         logMsg("Warning: Cannot transform, missing CRS information");
-        return geomCopy;
+        return geometry;
       }
     } catch (e) {
       logMsg("Error in transformGeometryToProjectedCRS: " + e.toString());
@@ -822,16 +885,16 @@ Item {
                 // Create a geometry wrapper instance
                 let wrapper = geometryWrapperComponentGlobal.createObject(null, {
                   "qgsGeometry": transformGeometryToProjectedCRS(modelData.geometry, plugin.testPipesLayer.crs),
-                  "crs": positionSource.crs || plugin.mapCrs
+                  "crs": positionSource.crs
                 });
                 
                 if (wrapper) {
                   try {
                     let vertices = wrapper.getVerticesAsArray();
                     
-                    if (vertices && vertices.length > 0) {
-                      // Log information about the vertices for debugging
-                      console.log("Feature " + modelData.id + " has " + vertices.length + " vertices");
+                    if (vertices && vertices.length >= 2) {
+                      // Successfully got vertices, use them
+                      logMsg("Successfully extracted " + vertices.length + " vertices for 3D pipe");
                       
                       // Compute distance from plugin.currentPosition to the first point
                       let dx = vertices[0].x - plugin.currentPosition[0];
@@ -1323,14 +1386,23 @@ Item {
   
   // Initialize when plugin loads
   Component.onCompleted: {
-    logMsg("QField 3D Navigation Pluginloaded");
+    logMsg("QField 3D Navigation Plugin v1.07 loaded");
+    logMsg("Enhanced coordinate system handling and distance calculation");
     
-    // Store map CRS for fallback
-    if (iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
-      logMsg("Map Canvas CRS: " + (iface.mapCanvas.mapSettings.destinationCrs ? iface.mapCanvas.mapSettings.destinationCrs.authid : "Unknown"));
-      plugin.mapCrs = iface.mapCanvas.mapSettings.destinationCrs;
-    } else {
-      logMsg("Map Canvas not available");
+    // Log CRS information
+    try {
+      if (positionSource) {
+        logMsg("Position source CRS: " + (positionSource.crs ? positionSource.crs.authid : "Not available"));
+      } else {
+        logMsg("Position source not available");
+      }
+      
+      if (iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
+        logMsg("Map canvas CRS: " + (iface.mapCanvas.mapSettings.destinationCrs ? 
+               iface.mapCanvas.mapSettings.destinationCrs.authid : "Not available"));
+      }
+    } catch (e) {
+      logMsg("Error getting CRS information: " + e.toString());
     }
     
     // Add plugin button to toolbar
