@@ -517,6 +517,11 @@ Item {
             if (vertices && vertices.length > 0) {
               logMsg("Successfully extracted " + vertices.length + " vertices");
               
+              // Log the coordinate system and sample coordinates
+              logMsg("Layer CRS: " + (testPipesLayer.crs ? testPipesLayer.crs.authid : "Unknown"));
+              logMsg("Current position: " + plugin.currentPosition[0] + ", " + plugin.currentPosition[1]);
+              logMsg("First vertex: " + vertices[0].x + ", " + vertices[0].y);
+              
               // Calculate distance to first point of the feature
               const dx = vertices[0].x - plugin.currentPosition[0];
               const dy = vertices[0].y - plugin.currentPosition[1];
@@ -628,6 +633,15 @@ Item {
           positionSource.positionInformation.longitudeValid &&
           positionSource.positionInformation.latitudeValid) {
 
+        // Log the coordinate system information
+        if (plugin.positions.length === 0) {
+          logMsg("Position source CRS: " + (positionSource.crs ? positionSource.crs.authid : "Unknown"));
+          logMsg("Raw position: " + positionSource.positionInformation.longitude + ", " + 
+                positionSource.positionInformation.latitude);
+          logMsg("Projected position: " + positionSource.projectedPosition.x + ", " + 
+                positionSource.projectedPosition.y);
+        }
+
         plugin.positions.push(positionSource.projectedPosition)
         if (plugin.positions.length > 5) {
           plugin.positions.shift()
@@ -643,6 +657,14 @@ Item {
         y = y / plugin.positions.length
         plugin.currentPosition = [x, y, 0]
 
+        gpsPositionText.text = 'GPS Projected: ' + x.toFixed(2) + ', ' + y.toFixed(2);
+        
+        // Update raw GPS coordinates display
+        if (positionSource.positionInformation.longitudeValid && positionSource.positionInformation.latitudeValid) {
+          gpsRawText.text = 'GPS Raw: ' + positionSource.positionInformation.longitude.toFixed(6) + 
+                          ', ' + positionSource.positionInformation.latitude.toFixed(6);
+        }
+
         if (!plugin.initiated) {
           plugin.initiated = true
           plugin.points = [
@@ -655,7 +677,6 @@ Item {
           ]
         }
 
-        gpsPositionText.text = 'GPS Position: ' + plugin.currentPosition[0] + ', ' + plugin.currentPosition[1]
         gpsAccuracyText.text = 'Accuracy: ' + positionSource.supportedPositioningMethods
         
         // Update distances to pipe features when position changes
@@ -716,8 +737,14 @@ Item {
           [x,     y,    -5]
         ]
 
-        gpsPositionText.text = 'GPS Position: ' + plugin.currentPosition[0] + ', ' + plugin.currentPosition[1]
-        gpsAccuracyText.text = 'Accuracy: ' + positionSource.sourceError
+        gpsPositionText.text = 'GPS Projected: ' + plugin.currentPosition[0].toFixed(2) + ', ' + plugin.currentPosition[1].toFixed(2);
+        gpsAccuracyText.text = 'Accuracy: ' + positionSource.supportedPositioningMethods
+        
+        // Update raw GPS coordinates display
+        if (positionSource.positionInformation.longitudeValid && positionSource.positionInformation.latitudeValid) {
+          gpsRawText.text = 'GPS Raw: ' + positionSource.positionInformation.longitude.toFixed(6) + 
+                          ', ' + positionSource.positionInformation.latitude.toFixed(6);
+        }
       }
     }
 
@@ -1165,23 +1192,23 @@ Item {
       id: gpsPositionText
       anchors.top: tiltReadingText.bottom
       anchors.left: parent.left
-      text: 'GPS Position: ' + plugin.currentPosition[0] + ', ' + plugin.currentPosition[1]
+      text: 'GPS Projected: ' + plugin.currentPosition[0].toFixed(2) + ', ' + plugin.currentPosition[1].toFixed(2)
       font: Theme.defaultFont
       color: "green"
     }
 
     Text {
-      id: gpsAccuracyText
+      id: gpsRawText
       anchors.top: gpsPositionText.bottom
       anchors.left: parent.left
-      text: 'Accuracy: ' + positionSource.supportedPositioningMethods
+      text: 'GPS Raw: ' + positionSource.positionInformation.longitude.toFixed(6) + ', ' + positionSource.positionInformation.latitude.toFixed(6)
       font: Theme.defaultFont
-      color: "white"
+      color: "yellow"
     }
 
     Text {
       id: debugLogText
-      anchors.top: gpsAccuracyText.bottom
+      anchors.top: gpsRawText.bottom
       anchors.left: parent.left
       text: plugin.debugLogText  // Use the new property
       font: Theme.defaultFont
