@@ -708,7 +708,17 @@ Item {
       
       // Create a new geometry in the projected CRS
       if (srcCrs && destCrs) {
-        let transformedGeometry = geometry.transform(srcCrs, destCrs);
+        let transformedGeometry = null;
+        if (geometry && srcCrs && destCrs) {
+          try {
+            let coordTransform = new QgsCoordinateTransform(srcCrs, destCrs, QgsProject.instance());
+            transformedGeometry = geometry.clone();
+            transformedGeometry.transform(coordTransform);
+          } catch (error) {
+            logMsg("Error transforming geometry: " + error.toString());
+            transformedGeometry = geometry; // Fallback to original geometry
+          }
+        }
         if (transformedGeometry) {
           logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
           return transformedGeometry;
