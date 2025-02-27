@@ -669,35 +669,12 @@ Item {
       // Check if we need coordinate transformation
       if (!geometry) {
         logMsg("Error: Cannot transform null geometry");
-        return geometry;
+        return null;
       }
-      
-      // Check for CRS information
-      if (!layerCRS) {
-        logMsg("Warning: Layer CRS is missing");
-        return geometry;
-      }
-      
-      // Get position CRS using our helper
-      let destCrs = getPositionCrs();
-      if (!destCrs) {
-        logMsg("Warning: Position CRS is missing, using WGS84 as fallback");
-        // Try to create a WGS84 CRS directly
-        if (typeof QgsCoordinateReferenceSystem !== 'undefined') {
-          destCrs = QgsCoordinateReferenceSystem.fromEpsgId(4326);
-          if (!destCrs) {
-            logMsg("Failed to create WGS84 fallback CRS");
-            return geometry;
-          }
-        } else {
-          return geometry;
-        }
-      }
-      
-      // Try to get CRS information
-      let srcCrs = layerCRS;
-      
-      // Log CRS information
+
+      const srcCrs = layerCRS;
+      const destCrs = getPositionCrs();
+
       logMsg("Transforming from: " + (srcCrs ? srcCrs.authid : "Unknown") + 
              " to: " + (destCrs ? destCrs.authid : "Unknown"));
       
@@ -709,16 +686,49 @@ Item {
       // Create a new geometry in the projected CRS
       if (srcCrs && destCrs) {
         let transformedGeometry = null;
-        if (geometry && srcCrs && destCrs) {
+        if (geometry) {
           try {
-            let coordTransform = new QgsCoordinateTransform(srcCrs, destCrs, QgsProject.instance());
+            // Create QgsQuickCoordinateTransformer
+            let transformer = Qt.createQmlObject('import QgsQuick 0.1 as QgsQuick; QgsQuick.CoordinateTransformer { }', plugin);
+            
+            // Configure the transformer
+            transformer.sourceCrs = srcCrs;
+            transformer.destinationCrs = destCrs;
+            transformer.transformContext = QgsProject.instance().transformContext();
+
+            // Clone the geometry and transform each vertex
             transformedGeometry = geometry.clone();
-            transformedGeometry.transform(coordTransform);
+            let vertices = [];
+            
+            // Get vertices from WKT
+            const wkt = geometry.asWkt();
+            if (wkt) {
+              const coords = wkt.match(/[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?/g);
+              if (coords) {
+                for (let i = 0; i < coords.length; i += 2) {
+                  const x = parseFloat(coords[i]);
+                  const y = parseFloat(coords[i + 1]);
+                  
+                  // Set source position and get projected position
+                  transformer.sourcePosition = Qt.point(x, y);
+                  const projectedPos = transformer.projectedPosition;
+                  
+                  vertices.push([projectedPos.x, projectedPos.y]);
+                }
+                
+                // Create new geometry from transformed vertices
+                transformedGeometry = QgsGeometry.fromPolylineXY(vertices);
+              }
+            }
+            
+            // Clean up the transformer
+            transformer.destroy();
           } catch (error) {
             logMsg("Error transforming geometry: " + error.toString());
             transformedGeometry = geometry; // Fallback to original geometry
           }
         }
+        
         if (transformedGeometry) {
           logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
           return transformedGeometry;
