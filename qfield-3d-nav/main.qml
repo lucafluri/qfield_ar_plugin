@@ -489,10 +489,18 @@ Item {
 
   function calculateDistance(pointA, pointB) {
     try {
+      // Calculate distance in projected space (2D or 3D depending on available coordinates)
       let dx = pointA[0] - pointB[0];
       let dy = pointA[1] - pointB[1];
-      let dz = pointA[2] - pointB[2];
-      return Math.sqrt(dx * dx + dy * dy + dz * dz);
+      
+      // If we have z coordinates, use them for a 3D distance calculation
+      if (pointA.length > 2 && pointB.length > 2) {
+        let dz = pointA[2] - pointB[2];
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+      }
+      
+      // Otherwise use 2D distance
+      return Math.sqrt(dx * dx + dy * dy);
     } catch (e) {
       logMsg("Error in calculateDistance: " + e.toString());
       return -1;
@@ -505,33 +513,42 @@ Item {
       // Line segment vector
       const vx = lineEnd[0] - lineStart[0];
       const vy = lineEnd[1] - lineStart[1];
-      const vz = lineEnd[2] - lineStart[2];
       
       // Vector from line start to point
       const wx = point[0] - lineStart[0];
       const wy = point[1] - lineStart[1];
-      const wz = point[2] - lineStart[2];
       
-      // Squared length of line segment
-      const c1 = vx * vx + vy * vy + vz * vz;
+      // Squared length of line segment (2D for now)
+      const c1 = vx * vx + vy * vy;
       
       // If segment is a point, just return the start point
       if (c1 < 0.0000001) {
-        return [lineStart[0], lineStart[1], lineStart[2]];
+        // Return with Z coordinate if available
+        if (lineStart.length > 2) {
+          return [lineStart[0], lineStart[1], lineStart[2]];
+        }
+        return [lineStart[0], lineStart[1]];
       }
       
       // Projection of w onto v, normalized by length of v
-      const b = (wx * vx + wy * vy + wz * vz) / c1;
+      const b = (wx * vx + wy * vy) / c1;
       
       // Clamp to segment
       const pb = Math.max(0, Math.min(1, b));
       
       // Calculate closest point on line
-      return [
+      const result = [
         lineStart[0] + pb * vx,
-        lineStart[1] + pb * vy,
-        lineStart[2] + pb * vz
+        lineStart[1] + pb * vy
       ];
+      
+      // If we have Z coordinates, interpolate Z as well
+      if (lineStart.length > 2 && lineEnd.length > 2) {
+        const vz = lineEnd[2] - lineStart[2];
+        result.push(lineStart[2] + pb * vz);
+      }
+      
+      return result;
     } catch (e) {
       logMsg("Error in closestPointOnLineSegment: " + e.toString());
       return null;
@@ -587,6 +604,7 @@ Item {
               
               for (let i = 0; i < vertices.length; i++) {
                 const vertex = vertices[i];
+                // Use all available coordinates (including Z if available)
                 const vertexPoint = vertex.z !== undefined ? 
                                    [vertex.x, vertex.y, vertex.z] : 
                                    [vertex.x, vertex.y];
@@ -714,36 +732,49 @@ Item {
   function getPositionCrs() {
     try {
       // Try to create a CRS directly
-      // if (typeof QgsCoordinateReferenceSystem !== 'undefined') {
-      // Create a standard WGS84 CRS (EPSG:4326)
+      if (typeof QgsCoordinateReferenceSystem !== 'undefined') {
+        // Create a standard WGS84 CRS (EPSG:4326)
+        let crs = QgsCoordinateReferenceSystem.fromEpsgId(4326);
+        if (crs) {
+          logMsg("Created WGS84 CRS: " + crs.authid);
+          return crs;
+        }
+      } else {
+        logMsg("QgsCoordinateReferenceSystem is not defined");
+      }
       
-      let crs = QgsCoordinateReferenceSystem.fromEpsgId(4326);
-      if (crs) {
-        logMsg("Created WGS84 CRS: " + crs.authid);
+      // Try to get CRS from map canvas as fallback
+      if (typeof iface !== 'undefined' && iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
+        let crs = iface.mapCanvas.mapSettings.destinationCrs;
+        if (crs) {
+          logMsg("Using map canvas CRS: " + crs.authid);
+          return crs;
+        }
+      }
+      
+      // If we're in QField context, try to get the project CRS
+      if (typeof qgisProject !== 'undefined' && qgisProject) {
+        try {
+          let crs = qgisProject.crs;
+          if (crs) {
+            logMsg("Using project CRS: " + crs.authid);
+            return crs;
+          }
+        } catch (e) {
+          logMsg("Error getting project CRS: " + e.toString());
+        }
+      }
+      
+      // Create a temporary geometry wrapper to access its CRS
+      let tempWrapper = geometryWrapperComponentGlobal.createObject(null);
+      if (tempWrapper) {
+        let crs = tempWrapper.crs;
+        logMsg("Retrieved CRS from geometry wrapper: " + (crs ? crs.authid : "null"));
+        
+        // Clean up
+        tempWrapper.destroy();
         return crs;
       }
-
-      // }
-      
-      // // Try to get CRS from map canvas as fallback
-      // if (iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
-      //   let crs = iface.mapCanvas.mapSettings.destinationCrs;
-      //   if (crs) {
-      //     logMsg("Using map canvas CRS: " + crs.authid);
-      //     return crs;
-      //   }
-      // }
-      
-      // // Create a temporary geometry wrapper to access its CRS
-      // let tempWrapper = geometryWrapperComponentGlobal.createObject(null);
-      // if (tempWrapper) {
-      //   let crs = tempWrapper.crs;
-      //   logMsg("Retrieved CRS from geometry wrapper: " + (crs ? crs.authid : "null"));
-        
-      //   // Clean up
-      //   tempWrapper.destroy();
-      //   return crs;
-      // }
       
       logMsg("Failed to create CRS - all methods failed");
       return null;
