@@ -491,7 +491,8 @@ Item {
     try {
       let dx = pointA[0] - pointB[0];
       let dy = pointA[1] - pointB[1];
-      return Math.sqrt(dx * dx + dy * dy);
+      let dz = pointA[2] - pointB[2];
+      return Math.sqrt(dx * dx + dy * dy + dz * dz);
     } catch (e) {
       logMsg("Error in calculateDistance: " + e.toString());
       return -1;
@@ -504,21 +505,23 @@ Item {
       // Line segment vector
       const vx = lineEnd[0] - lineStart[0];
       const vy = lineEnd[1] - lineStart[1];
+      const vz = lineEnd[2] - lineStart[2];
       
       // Vector from line start to point
       const wx = point[0] - lineStart[0];
       const wy = point[1] - lineStart[1];
+      const wz = point[2] - lineStart[2];
       
       // Squared length of line segment
-      const c1 = vx * vx + vy * vy;
+      const c1 = vx * vx + vy * vy + vz * vz;
       
       // If segment is a point, just return the start point
       if (c1 < 0.0000001) {
-        return [lineStart[0], lineStart[1]];
+        return [lineStart[0], lineStart[1], lineStart[2]];
       }
       
       // Projection of w onto v, normalized by length of v
-      const b = (wx * vx + wy * vy) / c1;
+      const b = (wx * vx + wy * vy + wz * vz) / c1;
       
       // Clamp to segment
       const pb = Math.max(0, Math.min(1, b));
@@ -526,7 +529,8 @@ Item {
       // Calculate closest point on line
       return [
         lineStart[0] + pb * vx,
-        lineStart[1] + pb * vy
+        lineStart[1] + pb * vy,
+        lineStart[2] + pb * vz
       ];
     } catch (e) {
       logMsg("Error in closestPointOnLineSegment: " + e.toString());
@@ -547,7 +551,8 @@ Item {
     logMsg("Layer coordinate system: " + (layerCrs ? layerCrs.authid : "unknown"));
     
     const currentPos = plugin.currentPosition;
-    logMsg("Current projected position: " + currentPos[0].toFixed(2) + ", " + currentPos[1].toFixed(2));
+    logMsg("Current projected position: " + currentPos[0].toFixed(2) + ", " + currentPos[1].toFixed(2) + 
+           (currentPos.length > 2 ? ", " + currentPos[2].toFixed(2) : ""));
     
     // Add raw position info
     if (positionSource.positionInformation.longitudeValid && positionSource.positionInformation.latitudeValid) {
@@ -582,10 +587,13 @@ Item {
               
               for (let i = 0; i < vertices.length; i++) {
                 const vertex = vertices[i];
-                const dist = calculateDistance(currentPos, [vertex.x, vertex.y]);
+                const vertexPoint = vertex.z !== undefined ? 
+                                   [vertex.x, vertex.y, vertex.z] : 
+                                   [vertex.x, vertex.y];
+                const dist = calculateDistance(currentPos, vertexPoint);
                 if (dist < minDist) {
                   minDist = dist;
-                  closestPoint = [vertex.x, vertex.y];
+                  closestPoint = vertexPoint;
                 }
               }
               
@@ -597,8 +605,8 @@ Item {
                 // Find closest point on line segment
                 const segmentPoint = closestPointOnLineSegment(
                   currentPos, 
-                  [p1.x, p1.y], 
-                  [p2.x, p2.y]
+                  [p1.x, p1.y, p1.z || 0], 
+                  [p2.x, p2.y, p2.z || 0]
                 );
                 
                 if (segmentPoint) {
@@ -706,34 +714,36 @@ Item {
   function getPositionCrs() {
     try {
       // Try to create a CRS directly
-      if (typeof QgsCoordinateReferenceSystem !== 'undefined') {
-        // Create a standard WGS84 CRS (EPSG:4326)
-        let crs = QgsCoordinateReferenceSystem.fromEpsgId(4326);
-        if (crs) {
-          logMsg("Created WGS84 CRS: " + crs.authid);
-          return crs;
-        }
-      }
+      // if (typeof QgsCoordinateReferenceSystem !== 'undefined') {
+      // Create a standard WGS84 CRS (EPSG:4326)
       
-      // Try to get CRS from map canvas as fallback
-      if (iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
-        let crs = iface.mapCanvas.mapSettings.destinationCrs;
-        if (crs) {
-          logMsg("Using map canvas CRS: " + crs.authid);
-          return crs;
-        }
-      }
-      
-      // Create a temporary geometry wrapper to access its CRS
-      let tempWrapper = geometryWrapperComponentGlobal.createObject(null);
-      if (tempWrapper) {
-        let crs = tempWrapper.crs;
-        logMsg("Retrieved CRS from geometry wrapper: " + (crs ? crs.authid : "null"));
-        
-        // Clean up
-        tempWrapper.destroy();
+      let crs = QgsCoordinateReferenceSystem.fromEpsgId(4326);
+      if (crs) {
+        logMsg("Created WGS84 CRS: " + crs.authid);
         return crs;
       }
+
+      // }
+      
+      // // Try to get CRS from map canvas as fallback
+      // if (iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
+      //   let crs = iface.mapCanvas.mapSettings.destinationCrs;
+      //   if (crs) {
+      //     logMsg("Using map canvas CRS: " + crs.authid);
+      //     return crs;
+      //   }
+      // }
+      
+      // // Create a temporary geometry wrapper to access its CRS
+      // let tempWrapper = geometryWrapperComponentGlobal.createObject(null);
+      // if (tempWrapper) {
+      //   let crs = tempWrapper.crs;
+      //   logMsg("Retrieved CRS from geometry wrapper: " + (crs ? crs.authid : "null"));
+        
+      //   // Clean up
+      //   tempWrapper.destroy();
+      //   return crs;
+      // }
       
       logMsg("Failed to create CRS - all methods failed");
       return null;
