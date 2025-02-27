@@ -77,7 +77,16 @@ Item {
                   // Extract all linestrings from the MultiLineString
                   try {
                     // Extract content between the outer parentheses
-                    const multiLineContent = wkt.substring(wkt.indexOf("((") + 2, wkt.lastIndexOf("))"));
+                    const startIdx = wkt.indexOf("((");
+                    const endIdx = wkt.lastIndexOf("))");
+                    
+                    if (startIdx === -1 || endIdx === -1) {
+                      logMsg("Invalid MultiLineString format: missing (( or ))");
+                      throw new Error("Invalid MultiLineString format");
+                    }
+                    
+                    const multiLineContent = wkt.substring(startIdx + 2, endIdx);
+                    logMsg("Extracted MultiLineString content: " + multiLineContent);
                     
                     // Parse individual linestrings
                     let lineStrings = [];
@@ -110,7 +119,7 @@ Item {
                       }
                     }
                     
-                    logMsg("- Successfully parsed " + lineStrings.length + " linestrings");
+                    logMsg("Parsed " + lineStrings.length + " linestrings from MultiLineString");
                     
                     // Count total vertices across all linestrings
                     let totalVertices = 0;
@@ -118,34 +127,42 @@ Item {
                       const coordPairs = lineStrings[i].split(',');
                       totalVertices += coordPairs.length;
                     }
-                    logMsg("- Total vertices across all linestrings: " + totalVertices);
+                    logMsg("Total vertices across all linestrings: " + totalVertices);
                     
-                    // Log first few vertices from first linestring for debugging
-                    if (lineStrings.length > 0) {
-                      const firstLineCoords = lineStrings[0].split(',');
-                      if (firstLineCoords.length > 0) {
-                        const firstCoord = firstLineCoords[0].trim();
-                        logMsg("- First coordinate: " + firstCoord);
+                    // Process all linestrings to get all points
+                    let allPoints = [];
+                    
+                    for (let i = 0; i < lineStrings.length; i++) {
+                      const coordPairs = lineStrings[i].split(',');
+                      
+                      for (let j = 0; j < coordPairs.length; j++) {
+                        const coordPair = coordPairs[j].trim();
+                        const coords = coordPair.split(' ');
+                        
+                        if (coords.length >= 2) {
+                          const x = parseFloat(coords[0]);
+                          const y = parseFloat(coords[1]);
+                          const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
+                          
+                          if (!isNaN(x) && !isNaN(y)) {
+                            // Add to our points array
+                            allPoints.push({
+                              x: x,
+                              y: y,
+                              z: z
+                            });
+                          } else {
+                            logMsg("Warning: Invalid coordinate pair: " + coordPair);
+                          }
+                        } else {
+                          logMsg("Warning: Insufficient coordinates in pair: " + coordPair);
+                        }
                       }
                     }
                     
-                    // If we have at least one linestring, parse the first one
-                    if (lineStrings.length > 0) {
-                      const firstLine = lineStrings[0];
-                      const coordPairs = firstLine.split(",");
-                      
-                      logMsg("First linestring has " + coordPairs.length + " points");
-                      
-                      if (coordPairs.length > 0) {
-                        return coordPairs.map(function(pair) {
-                          const coords = pair.trim().split(" ");
-                          return {
-                            x: parseFloat(coords[0]),
-                            y: parseFloat(coords[1]),
-                            z: coords.length > 2 ? parseFloat(coords[2]) : 0
-                          };
-                        });
-                      }
+                    if (allPoints.length > 0) {
+                      logMsg("Successfully extracted " + allPoints.length + " points from MultiLineString");
+                      return allPoints;
                     }
                   } catch (e) {
                     logMsg("- Error parsing MultiLineString: " + e.toString());
@@ -295,13 +312,22 @@ Item {
           logMsg("- WKT type: " + wktType.trim());
           
           // Advanced WKT analysis based on type
-          if (wkt.startsWith("MultiLineString")) {
+          if (wkt.startsWith("MULTILINESTRING")) {
             logMsg("- Detected MultiLineString in WKT");
             
             // Extract all linestrings from the MultiLineString
             try {
               // Extract content between the outer parentheses
-              const multiLineContent = wkt.substring(wkt.indexOf("((") + 2, wkt.lastIndexOf("))"));
+              const startIdx = wkt.indexOf("((");
+              const endIdx = wkt.lastIndexOf("))");
+              
+              if (startIdx === -1 || endIdx === -1) {
+                logMsg("Invalid MultiLineString format: missing (( or ))");
+                throw new Error("Invalid MultiLineString format");
+              }
+              
+              const multiLineContent = wkt.substring(startIdx + 2, endIdx);
+              logMsg("Extracted MultiLineString content: " + multiLineContent);
               
               // Parse individual linestrings
               let lineStrings = [];
@@ -334,7 +360,7 @@ Item {
                 }
               }
               
-              logMsg("- Successfully parsed " + lineStrings.length + " linestrings");
+              logMsg("Parsed " + lineStrings.length + " linestrings from MultiLineString");
               
               // Count total vertices across all linestrings
               let totalVertices = 0;
@@ -342,20 +368,47 @@ Item {
                 const coordPairs = lineStrings[i].split(',');
                 totalVertices += coordPairs.length;
               }
-              logMsg("- Total vertices across all linestrings: " + totalVertices);
+              logMsg("Total vertices across all linestrings: " + totalVertices);
               
-              // Log first few vertices from first linestring for debugging
-              if (lineStrings.length > 0) {
-                const firstLineCoords = lineStrings[0].split(',');
-                if (firstLineCoords.length > 0) {
-                  const firstCoord = firstLineCoords[0].trim();
-                  logMsg("- First coordinate: " + firstCoord);
+              // Process all linestrings to get all points
+              let allPoints = [];
+              
+              for (let i = 0; i < lineStrings.length; i++) {
+                const coordPairs = lineStrings[i].split(',');
+                
+                for (let j = 0; j < coordPairs.length; j++) {
+                  const coordPair = coordPairs[j].trim();
+                  const coords = coordPair.split(' ');
+                  
+                  if (coords.length >= 2) {
+                    const x = parseFloat(coords[0]);
+                    const y = parseFloat(coords[1]);
+                    const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
+                    
+                    if (!isNaN(x) && !isNaN(y)) {
+                      // Add to our points array
+                      allPoints.push({
+                        x: x,
+                        y: y,
+                        z: z
+                      });
+                    } else {
+                      logMsg("Warning: Invalid coordinate pair: " + coordPair);
+                    }
+                  } else {
+                    logMsg("Warning: Insufficient coordinates in pair: " + coordPair);
+                  }
                 }
+              }
+              
+              if (allPoints.length > 0) {
+                logMsg("Successfully extracted " + allPoints.length + " points from MultiLineString");
+                return allPoints;
               }
             } catch (e) {
               logMsg("- Error parsing MultiLineString: " + e.toString());
             }
-          } else if (wkt.startsWith("LineString")) {
+          } else if (wkt.startsWith("LINESTRING")) {
             logMsg("- Detected LineString in WKT");
             // Count vertices in LineString
             const coordPairs = wkt.substring(wkt.indexOf('(') + 1, wkt.lastIndexOf(')')).split(',');
@@ -817,17 +870,28 @@ Item {
                       
                       // If there are too few points or we want to ensure we get all parts of a MultiLineString
                       // Let's try to get the WKT and parse it manually if needed
-                      if ((vertices.length < 2 || modelData.geometry.asWkt && modelData.geometry.asWkt().startsWith("MultiLineString")) && modelData.geometry.asWkt) {
+                      if ((vertices.length < 2 || modelData.geometry.asWkt && modelData.geometry.asWkt().startsWith("MULTILINESTRING")) && modelData.geometry.asWkt) {
                         try {
                           const wkt = modelData.geometry.asWkt();
                           
                           // Check if it's a MultiLineString
-                          if (wkt.startsWith("MultiLineString")) {
+                          if (wkt.startsWith("MULTILINESTRING")) {
                             logMsg("Attempting manual MultiLineString parsing for feature " + modelData.id);
                             
                             // Try to extract content between the outer parentheses
                             try {
-                              const multiLineContent = wkt.substring(wkt.indexOf("((") + 2, wkt.lastIndexOf("))"));
+                              // Fix: Make sure we're correctly extracting the content
+                              // The format is MULTILINESTRING((x1 y1, x2 y2), (x3 y3, x4 y4))
+                              const startIdx = wkt.indexOf("((");
+                              const endIdx = wkt.lastIndexOf("))");
+                              
+                              if (startIdx === -1 || endIdx === -1) {
+                                logMsg("Invalid MultiLineString format: missing (( or ))");
+                                throw new Error("Invalid MultiLineString format");
+                              }
+                              
+                              const multiLineContent = wkt.substring(startIdx + 2, endIdx);
+                              logMsg("Extracted MultiLineString content: " + multiLineContent);
                               
                               // Parse individual linestrings
                               let lineStrings = [];
@@ -867,6 +931,7 @@ Item {
                               
                               for (let i = 0; i < lineStrings.length; i++) {
                                 const coordPairs = lineStrings[i].split(',');
+                                logMsg("LineString " + i + " has " + coordPairs.length + " points");
                                 
                                 for (let j = 0; j < coordPairs.length; j++) {
                                   const coordPair = coordPairs[j].trim();
@@ -884,7 +949,11 @@ Item {
                                         y - plugin.currentPosition[1],
                                         z
                                       ]);
+                                    } else {
+                                      logMsg("Warning: Invalid coordinate pair: " + coordPair);
                                     }
+                                  } else {
+                                    logMsg("Warning: Insufficient coordinates in pair: " + coordPair);
                                   }
                                 }
                               }
@@ -897,20 +966,28 @@ Item {
                               logMsg("Error in advanced MultiLineString parsing: " + e.toString());
                               
                               // Fallback to regex method if the advanced parsing fails
+                              logMsg("Using regex fallback method for MultiLineString parsing");
                               const regex = /(-?\d+\.?\d*)\s+(-?\d+\.?\d*)/g;
                               let match;
                               let allPoints = [];
+                              
+                              // Log the WKT for debugging
+                              logMsg("WKT for regex parsing: " + wkt.substring(0, Math.min(100, wkt.length)) + (wkt.length > 100 ? "..." : ""));
                               
                               while ((match = regex.exec(wkt)) !== null) {
                                 const x = parseFloat(match[1]);
                                 const y = parseFloat(match[2]);
                                 
-                                // Add to our points array, relative to current position
-                                allPoints.push([
-                                  x - plugin.currentPosition[0],
-                                  y - plugin.currentPosition[1],
-                                  0 // No Z value in WKT
-                                ]);
+                                if (!isNaN(x) && !isNaN(y)) {
+                                  // Add to our points array, relative to current position
+                                  allPoints.push([
+                                    x - plugin.currentPosition[0],
+                                    y - plugin.currentPosition[1],
+                                    0 // No Z value in WKT
+                                  ]);
+                                } else {
+                                  logMsg("Warning: Invalid coordinate pair from regex: " + match[0]);
+                                }
                               }
                               
                               if (allPoints.length > 0) {
