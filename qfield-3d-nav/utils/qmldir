@@ -1,0 +1,4 @@
+module utils
+GeometryUtils 1.0 GeometryUtils.qml
+LayerUtils 1.0 LayerUtils.qml
+Logger 1.0 Logger.qml

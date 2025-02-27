@@ -1,0 +1,4 @@
+module components
+Compass 1.0 Compass.qml
+NavigationPopup 1.0 NavigationPopup.qml
+ThreeDView 1.0 ThreeDView.qml
