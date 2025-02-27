@@ -71,7 +71,7 @@ Item {
                   }
                 }
                 // Parse MultiLineString WKT: MULTILINESTRING((x1 y1, x2 y2), (x3 y3, x4 y4))
-                else if (wkt.startsWith("MultiLineString")) {
+                else if (wkt.startsWith("MULTILINESTRING") || wkt.startsWith("MultiLineString")) {
                   logMsg("- Detected MultiLineString in WKT");
                   
                   // Extract all linestrings from the MultiLineString
@@ -88,125 +88,47 @@ Item {
                     const multiLineContent = wkt.substring(startIdx + 2, endIdx);
                     logMsg("Extracted MultiLineString content: " + multiLineContent);
                     
-                    // Parse individual linestrings
-                    let lineStrings = [];
-                    let openParenCount = 0;
-                    let currentLine = "";
+                    // Parse individual linestrings - direct coordinate pair extraction
+                    // Based on the log, the format appears to be a series of coordinate pairs
+                    // without explicit linestring separators
+                    const coordPairs = multiLineContent.split(',');
+                    logMsg("Found " + coordPairs.length + " coordinate pairs in MultiLineString");
                     
-                    for (let i = 0; i < multiLineContent.length; i++) {
-                      const c = multiLineContent.charAt(i);
-                      
-                      if (c === "(") {
-                        openParenCount++;
-                        if (openParenCount === 1) {
-                          // Start of a new linestring
-                          currentLine = "";
-                        } else {
-                          currentLine += c;
-                        }
-                      } 
-                      else if (c === ")") {
-                        openParenCount--;
-                        if (openParenCount === 0) {
-                          // End of a linestring
-                          lineStrings.push(currentLine);
-                        } else {
-                          currentLine += c;
-                        }
-                      }
-                      else {
-                        currentLine += c;
-                      }
-                    }
-                    
-                    logMsg("Parsed " + lineStrings.length + " linestrings from MultiLineString");
-                    
-                    // Count total vertices across all linestrings
-                    let totalVertices = 0;
-                    for (let i = 0; i < lineStrings.length; i++) {
-                      const coordPairs = lineStrings[i].split(',');
-                      totalVertices += coordPairs.length;
-                    }
-                    logMsg("Total vertices across all linestrings: " + totalVertices);
-                    
-                    // Process all linestrings to get all points
+                    // Process all coordinate pairs
                     let allPoints = [];
                     
-                    for (let i = 0; i < lineStrings.length; i++) {
-                      const coordPairs = lineStrings[i].split(',');
+                    for (let i = 0; i < coordPairs.length; i++) {
+                      const coordPair = coordPairs[i].trim();
+                      // The format appears to be "x y" for each coordinate pair
+                      const coords = coordPair.split(' ');
                       
-                      for (let j = 0; j < coordPairs.length; j++) {
-                        const coordPair = coordPairs[j].trim();
-                        const coords = coordPair.split(' ');
+                      if (coords.length >= 2) {
+                        const x = parseFloat(coords[0]);
+                        const y = parseFloat(coords[1]);
+                        const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
                         
-                        if (coords.length >= 2) {
-                          const x = parseFloat(coords[0]);
-                          const y = parseFloat(coords[1]);
-                          const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
-                          
-                          if (!isNaN(x) && !isNaN(y)) {
-                            // Add to our points array
-                            allPoints.push({
-                              x: x,
-                              y: y,
-                              z: z
-                            });
-                          } else {
-                            logMsg("Warning: Invalid coordinate pair: " + coordPair);
-                          }
+                        if (!isNaN(x) && !isNaN(y)) {
+                          // Add to our points array
+                          allPoints.push({
+                            x: x,
+                            y: y,
+                            z: z
+                          });
                         } else {
-                          logMsg("Warning: Insufficient coordinates in pair: " + coordPair);
+                          logMsg("Warning: Invalid coordinate pair: " + coordPair);
                         }
+                      } else {
+                        logMsg("Warning: Insufficient coordinates in pair: " + coordPair);
                       }
                     }
                     
+                    logMsg("Total vertices extracted: " + allPoints.length);
+                    
                     if (allPoints.length > 0) {
-                      logMsg("Successfully extracted " + allPoints.length + " points from MultiLineString");
                       return allPoints;
                     }
                   } catch (e) {
                     logMsg("- Error parsing MultiLineString: " + e.toString());
-                    
-                    // Fallback to simpler parsing method
-                    try {
-                      // Find position of first inner opening parenthesis
-                      const firstOpenParen = multiLineContent.indexOf("(");
-                      if (firstOpenParen >= 0) {
-                        // Find matching closing parenthesis
-                        let openCount = 1;
-                        let closePos = -1;
-                        
-                        for (let i = firstOpenParen + 1; i < multiLineContent.length; i++) {
-                          if (multiLineContent.charAt(i) === "(") openCount++;
-                          if (multiLineContent.charAt(i) === ")") openCount--;
-                          
-                          if (openCount === 0) {
-                            closePos = i;
-                            break;
-                          }
-                        }
-                        
-                        if (closePos > 0) {
-                          const firstLineString = multiLineContent.substring(firstOpenParen + 1, closePos);
-                          const coordPairs = firstLineString.split(",");
-                          
-                          logMsg("Fallback method found " + coordPairs.length + " points");
-                          
-                          if (coordPairs.length > 0) {
-                            return coordPairs.map(function(pair) {
-                              const coords = pair.trim().split(" ");
-                              return {
-                                x: parseFloat(coords[0]),
-                                y: parseFloat(coords[1]),
-                                z: coords.length > 2 ? parseFloat(coords[2]) : 0
-                              };
-                            });
-                          }
-                        }
-                      }
-                    } catch (e2) {
-                      logMsg("- Fallback MultiLineString parsing also failed: " + e2);
-                    }
                   }
                 }
               }
@@ -312,7 +234,7 @@ Item {
           logMsg("- WKT type: " + wktType.trim());
           
           // Advanced WKT analysis based on type
-          if (wkt.startsWith("MultiLineString")) {
+          if (wkt.startsWith("MULTILINESTRING") || wkt.startsWith("MultiLineString")) {
             logMsg("- Detected MultiLineString in WKT");
             
             // Extract all linestrings from the MultiLineString
@@ -361,6 +283,42 @@ Item {
               }
               
               logMsg("Parsed " + lineStrings.length + " linestrings from MultiLineString");
+              
+              // If no linestrings were found using the parentheses method,
+              // try direct coordinate pair extraction
+              if (lineStrings.length === 0) {
+                logMsg("No linestrings found with parentheses method, trying direct coordinate extraction");
+                // Direct coordinate pair extraction
+                const coordPairs = multiLineContent.split(',');
+                logMsg("Found " + coordPairs.length + " coordinate pairs in MultiLineString");
+                
+                // Process all coordinate pairs directly
+                let allPoints = [];
+                
+                for (let i = 0; i < coordPairs.length; i++) {
+                  const coordPair = coordPairs[i].trim();
+                  const coords = coordPair.split(' ');
+                  
+                  if (coords.length >= 2) {
+                    const x = parseFloat(coords[0]);
+                    const y = parseFloat(coords[1]);
+                    const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
+                    
+                    if (!isNaN(x) && !isNaN(y)) {
+                      allPoints.push({
+                        x: x,
+                        y: y,
+                        z: z
+                      });
+                    }
+                  }
+                }
+                
+                if (allPoints.length > 0) {
+                  logMsg("Successfully extracted " + allPoints.length + " points directly from MultiLineString");
+                  return allPoints;
+                }
+              }
               
               // Count total vertices across all linestrings
               let totalVertices = 0;
@@ -875,7 +833,7 @@ Item {
                           const wkt = modelData.geometry.asWkt();
                           
                           // Check if it's a MultiLineString
-                          if (wkt.startsWith("MULTILINESTRING")) {
+                          if (wkt.startsWith("MULTILINESTRING") || wkt.startsWith("MultiLineString")) {
                             logMsg("Attempting manual MultiLineString parsing for feature " + modelData.id);
                             
                             // Try to extract content between the outer parentheses
@@ -893,68 +851,37 @@ Item {
                               const multiLineContent = wkt.substring(startIdx + 2, endIdx);
                               logMsg("Extracted MultiLineString content: " + multiLineContent);
                               
-                              // Parse individual linestrings
-                              let lineStrings = [];
-                              let openParenCount = 0;
-                              let currentLine = "";
+                              // Parse individual linestrings - direct coordinate pair extraction
+                              // Based on the log, the format appears to be a series of coordinate pairs
+                              // without explicit linestring separators
+                              const coordPairs = multiLineContent.split(',');
+                              logMsg("Found " + coordPairs.length + " coordinate pairs in MultiLineString");
                               
-                              for (let i = 0; i < multiLineContent.length; i++) {
-                                const c = multiLineContent.charAt(i);
-                                
-                                if (c === "(") {
-                                  openParenCount++;
-                                  if (openParenCount === 1) {
-                                    // Start of a new linestring
-                                    currentLine = "";
-                                  } else {
-                                    currentLine += c;
-                                  }
-                                } 
-                                else if (c === ")") {
-                                  openParenCount--;
-                                  if (openParenCount === 0) {
-                                    // End of a linestring
-                                    lineStrings.push(currentLine);
-                                  } else {
-                                    currentLine += c;
-                                  }
-                                }
-                                else {
-                                  currentLine += c;
-                                }
-                              }
-                              
-                              logMsg("Parsed " + lineStrings.length + " linestrings from MultiLineString");
-                              
-                              // Process all linestrings to get all points
+                              // Process all coordinate pairs
                               let allPoints = [];
                               
-                              for (let i = 0; i < lineStrings.length; i++) {
-                                const coordPairs = lineStrings[i].split(',');
-                                logMsg("LineString " + i + " has " + coordPairs.length + " points");
+                              for (let i = 0; i < coordPairs.length; i++) {
+                                const coordPair = coordPairs[i].trim();
+                                // The format appears to be "x y" for each coordinate pair
+                                const coords = coordPair.split(' ');
                                 
-                                for (let j = 0; j < coordPairs.length; j++) {
-                                  const coordPair = coordPairs[j].trim();
-                                  const coords = coordPair.split(' ');
+                                if (coords.length >= 2) {
+                                  const x = parseFloat(coords[0]);
+                                  const y = parseFloat(coords[1]);
+                                  const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
                                   
-                                  if (coords.length >= 2) {
-                                    const x = parseFloat(coords[0]);
-                                    const y = parseFloat(coords[1]);
-                                    const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
-                                    
-                                    if (!isNaN(x) && !isNaN(y)) {
-                                      // Add to our points array, relative to current position
-                                      allPoints.push([
-                                        x - plugin.currentPosition[0],
-                                        y - plugin.currentPosition[1],
-                                        z
-                                      ]);
-                                    } else {
-                                      logMsg("Warning: Invalid coordinate pair: " + coordPair);
-                                    }
+                                  if (!isNaN(x) && !isNaN(y)) {
+                                    // Add to our points array, relative to current position
+                                    allPoints.push([
+                                      x - plugin.currentPosition[0],
+                                      y - plugin.currentPosition[1],
+                                      z
+                                    ]);
                                   } else {
-                                    logMsg("Warning: Insufficient coordinates in pair: " + coordPair);
+                                    logMsg("Warning: Invalid coordinate pair: " + coordPair);
                                   }
+                                } else {
+                                  logMsg("Warning: Insufficient coordinates in pair: " + coordPair);
                                 }
                               }
                               
