@@ -65,7 +65,7 @@ Item {
   // Public interface
   //----------------------------------
   // Main action to open 3D navigation
-  Q.Button {
+  QfToolButton {
     id: threeDNavigationButton
     
     visible: true
