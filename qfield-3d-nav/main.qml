@@ -688,37 +688,65 @@ Item {
         let transformedGeometry = null;
         if (geometry) {
           try {
-            // Create QgsQuickCoordinateTransformer
-            let transformer = new CoordinateTransformer();
+            // Create a proper QgsQuickCoordinateTransformer
+            let transformer = QgsQuickCoordinateTransformer.createObject(plugin);
             
             // Configure the transformer
             transformer.sourceCrs = srcCrs;
             transformer.destinationCrs = destCrs;
-            transformer.transformContext = QgsProject.instance().transformContext();
-
+            transformer.transformContext = QgsProject.instance.transformContext();
+            
             // Clone the geometry and transform each vertex
             transformedGeometry = geometry.clone();
-            let vertices = [];
             
-            // Get vertices from WKT
-            const wkt = geometry.asWkt();
-            if (wkt) {
-              const coords = wkt.match(/[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?/g);
-              if (coords) {
-                for (let i = 0; i < coords.length; i += 2) {
-                  const x = parseFloat(coords[i]);
-                  const y = parseFloat(coords[i + 1]);
+            // Get vertices from the geometry wrapper
+            let wrapper = geometryWrapperComponentGlobal.createObject(null, {
+              "qgsGeometry": geometry,
+              "crs": srcCrs
+            });
+            
+            if (wrapper) {
+              const vertices = wrapper.getVerticesAsArray();
+              if (vertices && vertices.length > 0) {
+                logMsg("Transforming " + vertices.length + " vertices");
+                
+                // Create arrays for transformed vertices
+                let transformedVertices = [];
+                
+                // Transform each vertex
+                for (let i = 0; i < vertices.length; i++) {
+                  const vertex = vertices[i];
                   
-                  // Set source position and get projected position
-                  transformer.sourcePosition = Qt.point(x, y);
-                  const projectedPos = transformer.projectedPosition;
+                  // Create a QgsPoint from the vertex
+                  let point = QgsPoint(vertex.x, vertex.y, vertex.z || 0);
                   
-                  vertices.push([projectedPos.x, projectedPos.y]);
+                  // Transform the point
+                  transformer.sourcePosition = point;
+                  let transformedPoint = transformer.projectedPosition;
+                  
+                  // Add to transformed vertices
+                  transformedVertices.push({
+                    x: transformedPoint.x,
+                    y: transformedPoint.y,
+                    z: transformedPoint.z || 0
+                  });
                 }
                 
-                // Create new geometry from transformed vertices
-                transformedGeometry = QgsGeometry.fromPolylineXY(vertices);
+                // Create a new geometry from the transformed vertices
+                if (transformedVertices.length > 0) {
+                  // Convert to QgsPointXY array for creating a polyline
+                  let pointsXY = [];
+                  for (let i = 0; i < transformedVertices.length; i++) {
+                    pointsXY.push(QgsPointXY(transformedVertices[i].x, transformedVertices[i].y));
+                  }
+                  
+                  // Create a new geometry from the transformed points
+                  transformedGeometry = QgsGeometry.fromPolylineXY(pointsXY);
+                }
               }
+              
+              // Clean up the wrapper
+              wrapper.destroy();
             }
             
             // Clean up the transformer
