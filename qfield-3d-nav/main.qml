@@ -19,9 +19,7 @@ Item {
   property var positionSource: iface.findItemByObjectName('positionSource')
   property var projectUtils: ProjectUtils
 
-
   property var testPipesLayer
-  property string pipe_text: ""
 
   property bool initiated: false
   property var points: []
@@ -188,597 +186,20 @@ Item {
   }
 
   //----------------------------------
-  // Enhanced logging system
+  // Toolbar button to open the popup
   //----------------------------------
-  function logMsg(msg) {
-    let timestamp = new Date().toLocaleTimeString();
-    if (iface && iface.logMessage) {
-      iface.logMessage("[3D Nav] " + msg);
-    }
-    
-    // Also log to console for QField development builds
-    console.log("[3D Nav] " + msg);
-    
-    // Also display in the overlay
-    plugin.debugLogText += timestamp + ": " + msg + "\n";
-    
-    // Keep log at a manageable size - trim if too long
-    if (plugin.debugLogText.length > 10000) {
-      let lines = plugin.debugLogText.split('\n');
-      if (lines.length > 100) {
-        lines = lines.slice(lines.length - 100);
-        plugin.debugLogText = lines.join('\n');
-      }
-    }
-  }
-  
-  // Advanced geometry analysis function for debugging
-  function analyzeGeometry(geometry) {
-    if (!geometry) {
-      logMsg("ERROR: Null geometry provided to analyzeGeometry");
-      return;
-    }
-    
-    // Log basic geometry properties
-    logMsg("Geometry analysis:");
-    logMsg("- Type: " + geometry.type);
-    
-    // Try different methods to extract geometry data
-    if (geometry.asWkt) {
-      try {
-        const wkt = geometry.asWkt();
-        logMsg("- WKT available: " + (wkt ? "Yes" : "No"));
-        if (wkt) {
-          logMsg("- WKT length: " + wkt.length);
-          const wktType = wkt.substring(0, wkt.indexOf('('));
-          logMsg("- WKT type: " + wktType.trim());
-          
-          // Advanced WKT analysis based on type
-          if (wkt.startsWith("MULTILINESTRING") || wkt.startsWith("MultiLineString")) {
-            logMsg("- Detected MultiLineString in WKT");
-            
-            // Extract all linestrings from the MultiLineString
-            try {
-              // Extract content between the outer parentheses
-              const startIdx = wkt.indexOf("((");
-              const endIdx = wkt.lastIndexOf("))");
-              
-              if (startIdx === -1 || endIdx === -1) {
-                logMsg("Invalid MultiLineString format: missing (( or ))");
-                throw new Error("Invalid MultiLineString format");
-              }
-              
-              const multiLineContent = wkt.substring(startIdx + 2, endIdx);
-              logMsg("Extracted MultiLineString content: " + multiLineContent);
-              
-              // Parse individual linestrings
-              let lineStrings = [];
-              let openParenCount = 0;
-              let currentLine = "";
-              
-              for (let i = 0; i < multiLineContent.length; i++) {
-                const c = multiLineContent.charAt(i);
-                
-                if (c === "(") {
-                  openParenCount++;
-                  if (openParenCount === 1) {
-                    // Start of a new linestring
-                    currentLine = "";
-                  } else {
-                    currentLine += c;
-                  }
-                } 
-                else if (c === ")") {
-                  openParenCount--;
-                  if (openParenCount === 0) {
-                    // End of a linestring
-                    lineStrings.push(currentLine);
-                  } else {
-                    currentLine += c;
-                  }
-                }
-                else {
-                  currentLine += c;
-                }
-              }
-              
-              logMsg("Parsed " + lineStrings.length + " linestrings from MultiLineString");
-              
-              // If no linestrings were found using the parentheses method,
-              // try direct coordinate pair extraction
-              if (lineStrings.length === 0) {
-                logMsg("No linestrings found with parentheses method, trying direct coordinate extraction");
-                // Direct coordinate pair extraction
-                const coordPairs = multiLineContent.split(',');
-                logMsg("Found " + coordPairs.length + " coordinate pairs in MultiLineString");
-                
-                // Process all coordinate pairs directly
-                let allPoints = [];
-                
-                for (let i = 0; i < coordPairs.length; i++) {
-                  const coordPair = coordPairs[i].trim();
-                  const coords = coordPair.split(' ');
-                  
-                  if (coords.length >= 2) {
-                    const x = parseFloat(coords[0]);
-                    const y = parseFloat(coords[1]);
-                    const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
-                    
-                    if (!isNaN(x) && !isNaN(y)) {
-                      allPoints.push({
-                        x: x,
-                        y: y,
-                        z: z
-                      });
-                    }
-                  }
-                }
-                
-                if (allPoints.length > 0) {
-                  logMsg("Successfully extracted " + allPoints.length + " points directly from MultiLineString");
-                  return allPoints;
-                }
-              }
-              
-              // Count total vertices across all linestrings
-              let totalVertices = 0;
-              for (let i = 0; i < lineStrings.length; i++) {
-                const coordPairs = lineStrings[i].split(',');
-                totalVertices += coordPairs.length;
-              }
-              logMsg("Total vertices across all linestrings: " + totalVertices);
-              
-              // Process all linestrings to get all points
-              let allPoints = [];
-              
-              for (let i = 0; i < lineStrings.length; i++) {
-                const coordPairs = lineStrings[i].split(',');
-                
-                for (let j = 0; j < coordPairs.length; j++) {
-                  const coordPair = coordPairs[j].trim();
-                  const coords = coordPair.split(' ');
-                  
-                  if (coords.length >= 2) {
-                    const x = parseFloat(coords[0]);
-                    const y = parseFloat(coords[1]);
-                    const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
-                    
-                    if (!isNaN(x) && !isNaN(y)) {
-                      // Add to our points array
-                      allPoints.push({
-                        x: x,
-                        y: y,
-                        z: z
-                      });
-                    } else {
-                      logMsg("Warning: Invalid coordinate pair: " + coordPair);
-                    }
-                  } else {
-                    logMsg("Warning: Insufficient coordinates in pair: " + coordPair);
-                  }
-                }
-              }
-              
-              if (allPoints.length > 0) {
-                logMsg("Successfully extracted " + allPoints.length + " points from MultiLineString");
-                return allPoints;
-              }
-            } catch (e) {
-              logMsg("- Error parsing MultiLineString: " + e.toString());
-            }
-          } else if (wkt.startsWith("LINESTRING")) {
-            logMsg("- Detected LineString in WKT");
-            // Count vertices in LineString
-            const coordPairs = wkt.substring(wkt.indexOf('(') + 1, wkt.lastIndexOf(')')).split(',');
-            logMsg("- Contains approximately " + coordPairs.length + " vertices");
-            
-            // Log first coordinate for debugging
-            if (coordPairs.length > 0) {
-              logMsg("- First coordinate: " + coordPairs[0].trim());
-            }
-          }
-        }
-      } catch (e) {
-        logMsg("- Error getting WKT: " + e.toString());
-      }
-    } else {
-      logMsg("- WKT method not available");
-    }
-    
-    // Try to create a wrapper and get vertices
-    try {
-      let wrapper = geometryWrapperComponentGlobal.createObject(null, {
-        "qgsGeometry": geometry,
-        "crs": testPipesLayer ? testPipesLayer.crs : null
-      });
-      
-      if (wrapper) {
-        logMsg("- Wrapper created successfully");
-        try {
-          const vertices = wrapper.getVerticesAsArray();
-          logMsg("- Vertices array available: " + (vertices ? "Yes" : "No"));
-          if (vertices) {
-            logMsg("- Vertex count: " + vertices.length);
-            if (vertices.length > 0) {
-              // Log first vertex
-              logMsg("- First vertex: [" + vertices[0].x + ", " + vertices[0].y + 
-                    (vertices[0].z ? ", " + vertices[0].z : ", NULL") + "]");
-              
-              // Log last vertex if more than one
-              if (vertices.length > 1) {
-                const last = vertices[vertices.length - 1];
-                logMsg("- Last vertex: [" + last.x + ", " + last.y + 
-                      (last.z ? ", " + last.z : ", NULL") + "]");
-              }
-            }
-          }
-        } catch (e) {
-          logMsg("- Error getting vertices: " + e.toString());
-        }
-        wrapper.destroy();
-      } else {
-        logMsg("- Failed to create geometry wrapper");
-      }
-    } catch (e) {
-      logMsg("- Exception during wrapper creation: " + e.toString());
-    }
-    
-    logMsg("Geometry analysis complete");
-  }
+  QfToolButton {
+    id: pluginButton
+    iconSource: 'icon.svg'
+    iconColor: "white"
+    bgcolor: Theme.darkGray
+    round: true
 
-  function loadPipeFeatures() {
-    if (!testPipesLayer) {
-      console.error('test_pipes layer not found');
-      return;
-    }
-
-    // Reset pipe features array
-    pipeFeatures = [];
-    
-    // We'll only load 2-3 features as requested
-    const maxFeaturesToLoad = 3;
-    let featuresFound = 0;
-    logMsg("Attempting to load up to " + maxFeaturesToLoad + " features from layer: " + testPipesLayer.name);
-    
-    for (let i = 0; i < 10 && featuresFound < maxFeaturesToLoad; i++) {
-      const featureId = i.toString();
-      const feature = testPipesLayer.getFeature(featureId);
-      
-      if (!feature) {
-        continue; // Skip if feature doesn't exist
-      }
-      
-      if (feature.geometry) {
-        logMsg("Found feature " + featureId + " with geometry");
-        
-        // Perform detailed geometry analysis
-        analyzeGeometry(feature.geometry);
-        
-        // Add color property to the feature - use distinct colors for each pipe
-        const pipeColors = [
-          Qt.rgba(0.2, 0.6, 1.0, 1.0),  // Blue
-          Qt.rgba(0.8, 0.2, 0.2, 1.0),  // Red
-          Qt.rgba(0.2, 0.8, 0.2, 1.0)   // Green
-        ];
-        const featureColor = pipeColors[featuresFound % pipeColors.length];
-        
-        pipeFeatures.push({
-          geometry: feature.geometry,
-          id: feature.id,
-          color: featureColor
-        });
-        
-        featuresFound++;
-        logMsg("Loaded feature " + feature.id + " successfully (" + featuresFound + " of " + maxFeaturesToLoad + ")");
-        
-        if (featuresFound >= maxFeaturesToLoad) {
-          logMsg("Reached maximum number of features to load (" + maxFeaturesToLoad + ")");
-          break;
-        }
-      } else {
-        logMsg("Feature " + featureId + " exists but has no geometry");
-      }
-    }
-    
-    if (featuresFound === 0) {
-      logMsg('No valid features found with geometry');
-    } else {
-      logMsg("Loaded " + featuresFound + " pipe features");
+    onClicked: {
+      threeDNavigationPopup.open()
     }
   }
 
-  function calculateDistance(pointA, pointB) {
-    try {
-      // Calculate distance in projected space (2D or 3D depending on available coordinates)
-      let dx = pointA[0] - pointB[0];
-      let dy = pointA[1] - pointB[1];
-      
-      // If we have z coordinates, use them for a 3D distance calculation
-      if (pointA.length > 2 && pointB.length > 2) {
-        let dz = pointA[2] - pointB[2];
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
-      }
-      
-      // Otherwise use 2D distance
-      return Math.sqrt(dx * dx + dy * dy);
-    } catch (e) {
-      logMsg("Error in calculateDistance: " + e.toString());
-      return -1;
-    }
-  }
-
-  // Helper function to find closest point on a line segment
-  function closestPointOnLineSegment(point, lineStart, lineEnd) {
-    try {
-      // Line segment vector
-      const vx = lineEnd[0] - lineStart[0];
-      const vy = lineEnd[1] - lineStart[1];
-      
-      // Vector from line start to point
-      const wx = point[0] - lineStart[0];
-      const wy = point[1] - lineStart[1];
-      
-      // Squared length of line segment (2D for now)
-      const c1 = vx * vx + vy * vy;
-      
-      // If segment is a point, just return the start point
-      if (c1 < 0.0000001) {
-        // Return with Z coordinate if available
-        if (lineStart.length > 2) {
-          return [lineStart[0], lineStart[1], lineStart[2]];
-        }
-        return [lineStart[0], lineStart[1]];
-      }
-      
-      // Projection of w onto v, normalized by length of v
-      const b = (wx * vx + wy * vy) / c1;
-      
-      // Clamp to segment
-      const pb = Math.max(0, Math.min(1, b));
-      
-      // Calculate closest point on line
-      const result = [
-        lineStart[0] + pb * vx,
-        lineStart[1] + pb * vy
-      ];
-      
-      // If we have Z coordinates, interpolate Z as well
-      if (lineStart.length > 2 && lineEnd.length > 2) {
-        const vz = lineEnd[2] - lineStart[2];
-        result.push(lineStart[2] + pb * vz);
-      }
-      
-      return result;
-    } catch (e) {
-      logMsg("Error in closestPointOnLineSegment: " + e.toString());
-      return null;
-    }
-  }
-
-  function logPipeDistances() {
-    if (!plugin.currentPosition || !pipeFeatures.length) return;
-    
-    logMsg("===== Starting distance calculation =====");
-    
-    // Get CRS information
-    const posCrs = getPositionCrs();
-    const layerCrs = plugin.testPipesLayer ? plugin.testPipesLayer.crs : null;
-    
-    logMsg("Current position system: " + (posCrs ? posCrs.authid : "unknown"));
-    logMsg("Layer coordinate system: " + (layerCrs ? layerCrs.authid : "unknown"));
-    
-    const currentPos = plugin.currentPosition;
-    logMsg("Current projected position: " + currentPos[0].toFixed(2) + ", " + currentPos[1].toFixed(2) + 
-           (currentPos.length > 2 ? ", " + currentPos[2].toFixed(2) : ""));
-    
-    // Add raw position info
-    if (positionSource.positionInformation.longitudeValid && positionSource.positionInformation.latitudeValid) {
-      logMsg("Current raw position: " + positionSource.positionInformation.longitude.toFixed(6) + 
-            ", " + positionSource.positionInformation.latitude.toFixed(6));
-    }
-    
-    pipeFeatures.forEach(function(feature, idx) {
-      try {
-        logMsg("Processing pipe feature #" + idx);
-
-        // Get position CRS
-        const posCrs = getPositionCrs();
-        
-        // Transform the feature geometry to the same CRS as the position
-        const transformedGeometry = transformGeometryToProjectedCRS(feature.geometry, plugin.testPipesLayer.crs);
-        
-        // Create a geometry wrapper for the transformed geometry
-        let wrapper = geometryWrapperComponentGlobal.createObject(null, {
-          "qgsGeometry": transformedGeometry,
-          "crs": posCrs
-        });
-          
-        if (wrapper) {
-          // Calculate distance manually using vertices
-          try {
-            const vertices = wrapper.getVerticesAsArray();
-            if (vertices && vertices.length > 0) {
-              // Find the closest vertex
-              let minDist = Number.MAX_VALUE;
-              let closestPoint = null;
-              
-              for (let i = 0; i < vertices.length; i++) {
-                const vertex = vertices[i];
-                // Use all available coordinates (including Z if available)
-                const vertexPoint = vertex.z !== undefined ? 
-                                   [vertex.x, vertex.y, vertex.z] : 
-                                   [vertex.x, vertex.y];
-                const dist = calculateDistance(currentPos, vertexPoint);
-                if (dist < minDist) {
-                  minDist = dist;
-                  closestPoint = vertexPoint;
-                }
-              }
-              
-              // Also check distances to line segments for more accuracy
-              for (let i = 0; i < vertices.length - 1; i++) {
-                const p1 = vertices[i];
-                const p2 = vertices[i + 1];
-                
-                // Find closest point on line segment
-                const segmentPoint = closestPointOnLineSegment(
-                  currentPos, 
-                  [p1.x, p1.y, p1.z || 0], 
-                  [p2.x, p2.y, p2.z || 0]
-                );
-                
-                if (segmentPoint) {
-                  const dist = calculateDistance(currentPos, segmentPoint);
-                  if (dist < minDist) {
-                    minDist = dist;
-                    closestPoint = segmentPoint;
-                  }
-                }
-              }
-              
-              if (closestPoint) {
-                let distance = calculateDistance(currentPos, closestPoint);
-                logMsg("Distance to pipe #" + idx + ": " + distance.toFixed(2) + " meters");
-                
-                // Update the feature's distance property
-                feature.distance = distance;
-              } else {
-                logMsg("Failed to find closest point on pipe #" + idx);
-              }
-            } else {
-              logMsg("No vertices found for pipe #" + idx);
-            }
-          } catch (e) {
-            logMsg("Error calculating distance for pipe #" + idx + ": " + e.toString());
-          }
-          wrapper.destroy();
-        } else {
-          logMsg("Failed to create geometry wrapper for pipe #" + idx);
-        }
-      } catch (e) {
-        logMsg("Error calculating distance for pipe #" + idx + ": " + e.toString());
-      }
-    });
-  }
-  
-  //----------------------------------
-  // Helper to transform coordinates
-  //----------------------------------
-  function transformGeometryToProjectedCRS(geometry, layerCRS) {
-    try {
-      // Check if we need coordinate transformation
-      if (!geometry) {
-        logMsg("Error: Cannot transform null geometry");
-        return null;
-      }
-
-      const srcCrs = layerCRS;
-      const destCrs = getPositionCrs();
-
-      logMsg("Transforming from: " + (srcCrs ? srcCrs.authid : "Unknown") + 
-             " to: " + (destCrs ? destCrs.authid : "Unknown"));
-      
-      if (srcCrs && destCrs && srcCrs.authid === destCrs.authid) {
-        logMsg("Layer and position use the same CRS, no transformation needed");
-        return geometry;
-      }
-      
-      // Create a new geometry in the projected CRS
-      if (srcCrs && destCrs) {
-        let transformedGeometry = null;
-        if (geometry) {
-          try {
-            // Instead of creating a CoordinateTransformer, we'll use QgsGeometry's transform method directly
-            let transformedGeometry = geometry;
-            // Create a QgsCoordinateTransform object
-            let transform = QgsCoordinateTransform(srcCrs, destCrs, qgsProject.instance.transformContext());
-            
-            // Apply the transformation to the geometry
-            transformedGeometry.transform(transform);
-            
-            logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
-            return transformedGeometry;
-          } catch (error) {
-            logMsg("Error transforming geometry: " + error.toString());
-            transformedGeometry = geometry; // Fallback to original geometry
-          }
-        }
-        
-        if (transformedGeometry) {
-          logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
-          return transformedGeometry;
-        } else {
-          logMsg("Warning: Transformation failed, using original geometry");
-          return geometry;
-        }
-      } else {
-        logMsg("Warning: Cannot transform, missing CRS information");
-        return geometry;
-      }
-    } catch (e) {
-      logMsg("Error in transformGeometryToProjectedCRS: " + e.toString());
-      return geometry;
-    }
-  }
-  
-  //----------------------------------
-  // Helper function to get position CRS
-  //----------------------------------
-  function getPositionCrs() {
-    try {
-      // Try to create a CRS directly
-      if (typeof QgsCoordinateReferenceSystem !== 'undefined') {
-        // Create a standard WGS84 CRS (EPSG:4326)
-        let crs = QgsCoordinateReferenceSystem.fromEpsgId(4326);
-        if (crs) {
-          logMsg("Created WGS84 CRS: " + crs.authid);
-          return crs;
-        }
-      } else {
-        logMsg("QgsCoordinateReferenceSystem is not defined");
-      }
-      
-      // Try to get CRS from map canvas as fallback
-      if (typeof iface !== 'undefined' && iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
-        let crs = iface.mapCanvas.mapSettings.destinationCrs;
-        if (crs) {
-          logMsg("Using map canvas CRS: " + crs.authid);
-          return crs;
-        }
-      }
-      
-      // If we're in QField context, try to get the project CRS
-      if (typeof qgisProject !== 'undefined' && qgisProject) {
-        try {
-          let crs = qgisProject.crs;
-          if (crs) {
-            logMsg("Using project CRS: " + crs.authid);
-            return crs;
-          }
-        } catch (e) {
-          logMsg("Error getting project CRS: " + e.toString());
-        }
-      }
-      
-      // Create a temporary geometry wrapper to access its CRS
-      let tempWrapper = geometryWrapperComponentGlobal.createObject(null);
-      if (tempWrapper) {
-        let crs = tempWrapper.crs;
-        logMsg("Retrieved CRS from geometry wrapper: " + (crs ? crs.authid : "null"));
-        
-        // Clean up
-        tempWrapper.destroy();
-        return crs;
-      }
-      
-      logMsg("Failed to create CRS - all methods failed");
-      return null;
-    } catch (e) {
-      logMsg("Error getting CRS: " + e.toString());
-      return null;
-    }
-  }
-  
   //----------------------------------
   // Keep track of position changes
   //----------------------------------
@@ -840,21 +261,6 @@ Item {
           logPipeDistances();
         }
       }
-    }
-  }
-
-  //----------------------------------
-  // Toolbar button to open the popup
-  //----------------------------------
-  QfToolButton {
-    id: pluginButton
-    iconSource: 'icon.svg'
-    iconColor: "white"
-    bgcolor: Theme.darkGray
-    round: true
-
-    onClicked: {
-      threeDNavigationPopup.open()
     }
   }
 
@@ -1495,26 +901,6 @@ Item {
     }
   }
 
-  // Initialize the test_pipes layer
-  function initLayer() {
-    logMsg("Initializing test_pipes layer");
-    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0];
-    
-    if (!testPipesLayer) {
-      logMsg("WARNING: test_pipes layer not found in project");
-      return;
-    }
-    
-    logMsg("Found test_pipes layer: " + testPipesLayer.name);
-    
-    // Display CRS information
-    if (testPipesLayer.crs) {
-      logMsg("Layer CRS: " + testPipesLayer.crs.authid);
-    } else {
-      logMsg("Layer has no CRS information");
-    }
-  }
-  
   // Initialize when plugin loads
   Component.onCompleted: {
     logMsg("QField 3D Navigation Plugin loaded");
@@ -1541,4 +927,622 @@ Item {
     // Try to initialize the test_pipes layer
     initLayer();
   }
+
+//==========================================
+// All functions
+//==========================================
+
+  // Initialize the test_pipes layer
+  function initLayer() {
+    logMsg("Initializing test_pipes layer");
+    testPipesLayer = qgisProject.mapLayersByName("test_pipes")[0];
+    
+    if (!testPipesLayer) {
+      logMsg("WARNING: test_pipes layer not found in project");
+      return;
+    }
+    
+    logMsg("Found test_pipes layer: " + testPipesLayer.name);
+    
+    // Display CRS information
+    if (testPipesLayer.crs) {
+      logMsg("Layer CRS: " + testPipesLayer.crs.authid);
+    } else {
+      logMsg("Layer has no CRS information");
+    }
+  }
+
+  //----------------------------------
+  // Enhanced logging system
+  //----------------------------------
+  function logMsg(msg) {
+    let timestamp = new Date().toLocaleTimeString();
+    if (iface && iface.logMessage) {
+      iface.logMessage("[3D Nav] " + msg);
+    }
+    
+    // Also log to console for QField development builds
+    console.log("[3D Nav] " + msg);
+    
+    // Also display in the overlay
+    plugin.debugLogText += timestamp + ": " + msg + "\n";
+    
+    // Keep log at a manageable size - trim if too long
+    if (plugin.debugLogText.length > 10000) {
+      let lines = plugin.debugLogText.split('\n');
+      if (lines.length > 100) {
+        lines = lines.slice(lines.length - 100);
+        plugin.debugLogText = lines.join('\n');
+      }
+    }
+  }
+  
+  // Advanced geometry analysis function for debugging
+  function analyzeGeometry(geometry) {
+    if (!geometry) {
+      logMsg("ERROR: Null geometry provided to analyzeGeometry");
+      return;
+    }
+    
+    // Log basic geometry properties
+    logMsg("Geometry analysis:");
+    logMsg("- Type: " + geometry.type);
+    
+    // Try different methods to extract geometry data
+    if (geometry.asWkt) {
+      try {
+        const wkt = geometry.asWkt();
+        logMsg("- WKT available: " + (wkt ? "Yes" : "No"));
+        if (wkt) {
+          logMsg("- WKT length: " + wkt.length);
+          const wktType = wkt.substring(0, wkt.indexOf('('));
+          logMsg("- WKT type: " + wktType.trim());
+          
+          // Advanced WKT analysis based on type
+          if (wkt.startsWith("MULTILINESTRING") || wkt.startsWith("MultiLineString")) {
+            logMsg("- Detected MultiLineString in WKT");
+            
+            // Extract all linestrings from the MultiLineString
+            try {
+              // Extract content between the outer parentheses
+              const startIdx = wkt.indexOf("((");
+              const endIdx = wkt.lastIndexOf("))");
+              
+              if (startIdx === -1 || endIdx === -1) {
+                logMsg("Invalid MultiLineString format: missing (( or ))");
+                throw new Error("Invalid MultiLineString format");
+              }
+              
+              const multiLineContent = wkt.substring(startIdx + 2, endIdx);
+              logMsg("Extracted MultiLineString content: " + multiLineContent);
+              
+              // Parse individual linestrings
+              let lineStrings = [];
+              let openParenCount = 0;
+              let currentLine = "";
+              
+              for (let i = 0; i < multiLineContent.length; i++) {
+                const c = multiLineContent.charAt(i);
+                
+                if (c === "(") {
+                  openParenCount++;
+                  if (openParenCount === 1) {
+                    // Start of a new linestring
+                    currentLine = "";
+                  } else {
+                    currentLine += c;
+                  }
+                } 
+                else if (c === ")") {
+                  openParenCount--;
+                  if (openParenCount === 0) {
+                    // End of a linestring
+                    lineStrings.push(currentLine);
+                  } else {
+                    currentLine += c;
+                  }
+                }
+                else {
+                  currentLine += c;
+                }
+              }
+              
+              logMsg("Parsed " + lineStrings.length + " linestrings from MultiLineString");
+              
+              // If no linestrings were found using the parentheses method,
+              // try direct coordinate pair extraction
+              if (lineStrings.length === 0) {
+                logMsg("No linestrings found with parentheses method, trying direct coordinate extraction");
+                // Direct coordinate pair extraction
+                const coordPairs = multiLineContent.split(',');
+                logMsg("Found " + coordPairs.length + " coordinate pairs in MultiLineString");
+                
+                // Process all coordinate pairs directly
+                let allPoints = [];
+                
+                for (let i = 0; i < coordPairs.length; i++) {
+                  const coordPair = coordPairs[i].trim();
+                  const coords = coordPair.split(' ');
+                  
+                  if (coords.length >= 2) {
+                    const x = parseFloat(coords[0]);
+                    const y = parseFloat(coords[1]);
+                    const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
+                    
+                    if (!isNaN(x) && !isNaN(y)) {
+                      allPoints.push({
+                        x: x,
+                        y: y,
+                        z: z
+                      });
+                    }
+                  }
+                }
+                
+                if (allPoints.length > 0) {
+                  logMsg("Successfully extracted " + allPoints.length + " points directly from MultiLineString");
+                  return allPoints;
+                }
+              }
+              
+              // Count total vertices across all linestrings
+              let totalVertices = 0;
+              for (let i = 0; i < lineStrings.length; i++) {
+                const coordPairs = lineStrings[i].split(',');
+                totalVertices += coordPairs.length;
+              }
+              logMsg("Total vertices across all linestrings: " + totalVertices);
+              
+              // Process all linestrings to get all points
+              let allPoints = [];
+              
+              for (let i = 0; i < lineStrings.length; i++) {
+                const coordPairs = lineStrings[i].split(',');
+                
+                for (let j = 0; j < coordPairs.length; j++) {
+                  const coordPair = coordPairs[j].trim();
+                  const coords = coordPair.split(' ');
+                  
+                  if (coords.length >= 2) {
+                    const x = parseFloat(coords[0]);
+                    const y = parseFloat(coords[1]);
+                    const z = coords.length > 2 ? parseFloat(coords[2]) : 0;
+                    
+                    if (!isNaN(x) && !isNaN(y)) {
+                      // Add to our points array
+                      allPoints.push({
+                        x: x,
+                        y: y,
+                        z: z
+                      });
+                    } else {
+                      logMsg("Warning: Invalid coordinate pair: " + coordPair);
+                    }
+                  } else {
+                    logMsg("Warning: Insufficient coordinates in pair: " + coordPair);
+                  }
+                }
+              }
+              
+              if (allPoints.length > 0) {
+                logMsg("Successfully extracted " + allPoints.length + " points from MultiLineString");
+                return allPoints;
+              }
+            } catch (e) {
+              logMsg("- Error parsing MultiLineString: " + e.toString());
+            }
+          } else if (wkt.startsWith("LINESTRING")) {
+            logMsg("- Detected LineString in WKT");
+            // Count vertices in LineString
+            const coordPairs = wkt.substring(wkt.indexOf('(') + 1, wkt.lastIndexOf(')')).split(',');
+            logMsg("- Contains approximately " + coordPairs.length + " vertices");
+            
+            // Log first coordinate for debugging
+            if (coordPairs.length > 0) {
+              logMsg("- First coordinate: " + coordPairs[0].trim());
+            }
+          }
+        }
+      } catch (e) {
+        logMsg("- Error getting WKT: " + e.toString());
+      }
+    } else {
+      logMsg("- WKT method not available");
+    }
+    
+    // Try to create a wrapper and get vertices
+    try {
+      let wrapper = geometryWrapperComponentGlobal.createObject(null, {
+        "qgsGeometry": geometry,
+        "crs": testPipesLayer ? testPipesLayer.crs : null
+      });
+      
+      if (wrapper) {
+        logMsg("- Wrapper created successfully");
+        try {
+          const vertices = wrapper.getVerticesAsArray();
+          logMsg("- Vertices array available: " + (vertices ? "Yes" : "No"));
+          if (vertices) {
+            logMsg("- Vertex count: " + vertices.length);
+            if (vertices.length > 0) {
+              // Log first vertex
+              logMsg("- First vertex: [" + vertices[0].x + ", " + vertices[0].y + 
+                    (vertices[0].z ? ", " + vertices[0].z : ", NULL") + "]");
+              
+              // Log last vertex if more than one
+              if (vertices.length > 1) {
+                const last = vertices[vertices.length - 1];
+                logMsg("- Last vertex: [" + last.x + ", " + last.y + 
+                      (last.z ? ", " + last.z : ", NULL") + "]");
+              }
+            }
+          }
+        } catch (e) {
+          logMsg("- Error getting vertices: " + e.toString());
+        }
+        wrapper.destroy();
+      } else {
+        logMsg("- Failed to create geometry wrapper");
+      }
+    } catch (e) {
+      logMsg("- Exception during wrapper creation: " + e.toString());
+    }
+    
+    logMsg("Geometry analysis complete");
+  }
+
+  function loadPipeFeatures() {
+    if (!testPipesLayer) {
+      console.error('test_pipes layer not found');
+      return;
+    }
+
+    // Reset pipe features array
+    pipeFeatures = [];
+    
+    // We'll only load 2-3 features as requested
+    const maxFeaturesToLoad = 3;
+    let featuresFound = 0;
+    logMsg("Attempting to load up to " + maxFeaturesToLoad + " features from layer: " + testPipesLayer.name);
+    
+    for (let i = 0; i < 10 && featuresFound < maxFeaturesToLoad; i++) {
+      const featureId = i.toString();
+      const feature = testPipesLayer.getFeature(featureId);
+      
+      if (!feature) {
+        continue; // Skip if feature doesn't exist
+      }
+      
+      if (feature.geometry) {
+        logMsg("Found feature " + featureId + " with geometry");
+        
+        // Perform detailed geometry analysis
+        analyzeGeometry(feature.geometry);
+        
+        // Add color property to the feature - use distinct colors for each pipe
+        const pipeColors = [
+          Qt.rgba(0.2, 0.6, 1.0, 1.0),  // Blue
+          Qt.rgba(0.8, 0.2, 0.2, 1.0),  // Red
+          Qt.rgba(0.2, 0.8, 0.2, 1.0)   // Green
+        ];
+        const featureColor = pipeColors[featuresFound % pipeColors.length];
+        
+        pipeFeatures.push({
+          geometry: feature.geometry,
+          id: feature.id,
+          color: featureColor
+        });
+        
+        featuresFound++;
+        logMsg("Loaded feature " + feature.id + " successfully (" + featuresFound + " of " + maxFeaturesToLoad + ")");
+        
+        if (featuresFound >= maxFeaturesToLoad) {
+          logMsg("Reached maximum number of features to load (" + maxFeaturesToLoad + ")");
+          break;
+        }
+      } else {
+        logMsg("Feature " + featureId + " exists but has no geometry");
+      }
+    }
+    
+    if (featuresFound === 0) {
+      logMsg('No valid features found with geometry');
+    } else {
+      logMsg("Loaded " + featuresFound + " pipe features");
+    }
+  }
+
+  function calculateDistance(pointA, pointB) {
+    try {
+      // Calculate distance in projected space (2D or 3D depending on available coordinates)
+      let dx = pointA[0] - pointB[0];
+      let dy = pointA[1] - pointB[1];
+      
+      // If we have z coordinates, use them for a 3D distance calculation
+      if (pointA.length > 2 && pointB.length > 2) {
+        let dz = pointA[2] - pointB[2];
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+      }
+      
+      // Otherwise use 2D distance
+      return Math.sqrt(dx * dx + dy * dy);
+    } catch (e) {
+      logMsg("Error in calculateDistance: " + e.toString());
+      return -1;
+    }
+  }
+
+  // Helper function to find closest point on a line segment
+  function closestPointOnLineSegment(point, lineStart, lineEnd) {
+    try {
+      // Line segment vector
+      const vx = lineEnd[0] - lineStart[0];
+      const vy = lineEnd[1] - lineStart[1];
+      
+      // Vector from line start to point
+      const wx = point[0] - lineStart[0];
+      const wy = point[1] - lineStart[1];
+      
+      // Squared length of line segment (2D for now)
+      const c1 = vx * vx + vy * vy;
+      
+      // If segment is a point, just return the start point
+      if (c1 < 0.0000001) {
+        // Return with Z coordinate if available
+        if (lineStart.length > 2) {
+          return [lineStart[0], lineStart[1], lineStart[2]];
+        }
+        return [lineStart[0], lineStart[1]];
+      }
+      
+      // Projection of w onto v, normalized by length of v
+      const b = (wx * vx + wy * vy) / c1;
+      
+      // Clamp to segment
+      const pb = Math.max(0, Math.min(1, b));
+      
+      // Calculate closest point on line
+      const result = [
+        lineStart[0] + pb * vx,
+        lineStart[1] + pb * vy
+      ];
+      
+      // If we have Z coordinates, interpolate Z as well
+      if (lineStart.length > 2 && lineEnd.length > 2) {
+        const vz = lineEnd[2] - lineStart[2];
+        result.push(lineStart[2] + pb * vz);
+      }
+      
+      return result;
+    } catch (e) {
+      logMsg("Error in closestPointOnLineSegment: " + e.toString());
+      return null;
+    }
+  }
+
+  function logPipeDistances() {
+    if (!plugin.currentPosition || !pipeFeatures.length) return;
+    
+    logMsg("===== Starting distance calculation =====");
+    
+    // Get CRS information
+    const posCrs = getPositionCrs();
+    const layerCrs = plugin.testPipesLayer ? plugin.testPipesLayer.crs : null;
+    
+    logMsg("Current position system: " + (posCrs ? posCrs.authid : "unknown"));
+    logMsg("Layer coordinate system: " + (layerCrs ? layerCrs.authid : "unknown"));
+    
+    const currentPos = plugin.currentPosition;
+    logMsg("Current projected position: " + currentPos[0].toFixed(2) + ", " + currentPos[1].toFixed(2) + 
+           (currentPos.length > 2 ? ", " + currentPos[2].toFixed(2) : ""));
+    
+    // Add raw position info
+    if (positionSource.positionInformation.longitudeValid && positionSource.positionInformation.latitudeValid) {
+      logMsg("Current raw position: " + positionSource.positionInformation.longitude.toFixed(6) + 
+            ", " + positionSource.positionInformation.latitude.toFixed(6));
+    }
+    
+    pipeFeatures.forEach(function(feature, idx) {
+      try {
+        logMsg("Processing pipe feature #" + idx);
+
+        // Get position CRS
+        const posCrs = getPositionCrs();
+        
+        // Transform the feature geometry to the same CRS as the position
+        const transformedGeometry = transformGeometryToProjectedCRS(feature.geometry, plugin.testPipesLayer.crs);
+        
+        // Create a geometry wrapper for the transformed geometry
+        let wrapper = geometryWrapperComponentGlobal.createObject(null, {
+          "qgsGeometry": transformedGeometry,
+          "crs": posCrs
+        });
+          
+        if (wrapper) {
+          // Calculate distance manually using vertices
+          try {
+            const vertices = wrapper.getVerticesAsArray();
+            if (vertices && vertices.length > 0) {
+              // Find the closest vertex
+              let minDist = Number.MAX_VALUE;
+              let closestPoint = null;
+              
+              for (let i = 0; i < vertices.length; i++) {
+                const vertex = vertices[i];
+                // Use all available coordinates (including Z if available)
+                const vertexPoint = vertex.z !== undefined ? 
+                                   [vertex.x, vertex.y, vertex.z] : 
+                                   [vertex.x, vertex.y];
+                const dist = calculateDistance(currentPos, vertexPoint);
+                if (dist < minDist) {
+                  minDist = dist;
+                  closestPoint = vertexPoint;
+                }
+              }
+              
+              // Also check distances to line segments for more accuracy
+              for (let i = 0; i < vertices.length - 1; i++) {
+                const p1 = vertices[i];
+                const p2 = vertices[i + 1];
+                
+                // Find closest point on line segment
+                const segmentPoint = closestPointOnLineSegment(
+                  currentPos, 
+                  [p1.x, p1.y, p1.z || 0], 
+                  [p2.x, p2.y, p2.z || 0]
+                );
+                
+                if (segmentPoint) {
+                  const dist = calculateDistance(currentPos, segmentPoint);
+                  if (dist < minDist) {
+                    minDist = dist;
+                    closestPoint = segmentPoint;
+                  }
+                }
+              }
+              
+              if (closestPoint) {
+                let distance = calculateDistance(currentPos, closestPoint);
+                logMsg("Distance to pipe #" + idx + ": " + distance.toFixed(2) + " meters");
+                
+                // Update the feature's distance property
+                feature.distance = distance;
+              } else {
+                logMsg("Failed to find closest point on pipe #" + idx);
+              }
+            } else {
+              logMsg("No vertices found for pipe #" + idx);
+            }
+          } catch (e) {
+            logMsg("Error calculating distance for pipe #" + idx + ": " + e.toString());
+          }
+          wrapper.destroy();
+        } else {
+          logMsg("Failed to create geometry wrapper for pipe #" + idx);
+        }
+      } catch (e) {
+        logMsg("Error calculating distance for pipe #" + idx + ": " + e.toString());
+      }
+    });
+  }
+  
+  //----------------------------------
+  // Helper to transform coordinates
+  //----------------------------------
+  function transformGeometryToProjectedCRS(geometry, layerCRS) {
+    try {
+      // Check if we need coordinate transformation
+      if (!geometry) {
+        logMsg("Error: Cannot transform null geometry");
+        return null;
+      }
+
+      const srcCrs = layerCRS;
+      const destCrs = getPositionCrs();
+
+      logMsg("Transforming from: " + (srcCrs ? srcCrs.authid : "Unknown") + 
+             " to: " + (destCrs ? destCrs.authid : "Unknown"));
+      
+      if (srcCrs && destCrs && srcCrs.authid === destCrs.authid) {
+        logMsg("Layer and position use the same CRS, no transformation needed");
+        return geometry;
+      }
+      
+      // Create a new geometry in the projected CRS
+      if (srcCrs && destCrs) {
+        let transformedGeometry = null;
+        if (geometry) {
+          try {
+            // Instead of creating a CoordinateTransformer, we'll use QgsGeometry's transform method directly
+            let transformedGeometry = geometry;
+            // Create a QgsCoordinateTransform object
+            let transform = QgsCoordinateTransform(srcCrs, destCrs, qgsProject.instance.transformContext());
+            
+            // Apply the transformation to the geometry
+            transformedGeometry.transform(transform);
+            
+            logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
+            return transformedGeometry;
+          } catch (error) {
+            logMsg("Error transforming geometry: " + error.toString());
+            transformedGeometry = geometry; // Fallback to original geometry
+          }
+        }
+        
+        if (transformedGeometry) {
+          logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
+          return transformedGeometry;
+        } else {
+          logMsg("Warning: Transformation failed, using original geometry");
+          return geometry;
+        }
+      } else {
+        logMsg("Warning: Cannot transform, missing CRS information");
+        return geometry;
+      }
+    } catch (e) {
+      logMsg("Error in transformGeometryToProjectedCRS: " + e.toString());
+      return geometry;
+    }
+  }
+  
+  //----------------------------------
+  // Helper function to get position CRS
+  //----------------------------------
+  function getPositionCrs() {
+    try {
+      // Try to create a CRS directly
+      if (typeof QgsCoordinateReferenceSystem !== 'undefined') {
+        // Create a standard WGS84 CRS (EPSG:4326)
+        let crs = QgsCoordinateReferenceSystem.fromEpsgId(4326);
+        if (crs) {
+          logMsg("Created WGS84 CRS: " + crs.authid);
+          return crs;
+        }
+      } else {
+        logMsg("QgsCoordinateReferenceSystem is not defined");
+      }
+      
+      // Try to get CRS from map canvas as fallback
+      if (typeof iface !== 'undefined' && iface && iface.mapCanvas && iface.mapCanvas.mapSettings) {
+        let crs = iface.mapCanvas.mapSettings.destinationCrs;
+        if (crs) {
+          logMsg("Using map canvas CRS: " + crs.authid);
+          return crs;
+        }
+      }
+      
+      // If we're in QField context, try to get the project CRS
+      if (typeof qgisProject !== 'undefined' && qgisProject) {
+        try {
+          let crs = qgisProject.crs;
+          if (crs) {
+            logMsg("Using project CRS: " + crs.authid);
+            return crs;
+          }
+        } catch (e) {
+          logMsg("Error getting project CRS: " + e.toString());
+        }
+      }
+      
+      // Create a temporary geometry wrapper to access its CRS
+      let tempWrapper = geometryWrapperComponentGlobal.createObject(null);
+      if (tempWrapper) {
+        let crs = tempWrapper.crs;
+        logMsg("Retrieved CRS from geometry wrapper: " + (crs ? crs.authid : "null"));
+        
+        // Clean up
+        tempWrapper.destroy();
+        return crs;
+      }
+      
+      logMsg("Failed to create CRS - all methods failed");
+      return null;
+    } catch (e) {
+      logMsg("Error getting CRS: " + e.toString());
+      return null;
+    }
+  }
+  
+  
 }
