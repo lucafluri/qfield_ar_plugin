@@ -691,7 +691,7 @@ Item {
             // Instead of creating a CoordinateTransformer, we'll use QgsGeometry's transform method directly
             let transformedGeometry = geometry;
             // Create a QgsCoordinateTransform object
-            let transform = QgsCoordinateTransform(srcCrs, destCrs, QgsProject.instance.transformContext());
+            let transform = QgsCoordinateTransform(srcCrs, destCrs, qgsProject.instance.transformContext());
             
             // Apply the transformation to the geometry
             transformedGeometry.transform(transform);
@@ -882,8 +882,9 @@ Item {
         let y = positionSource.projectedPosition.y
 
         plugin.currentPosition = [x, y, 0]
-        plugin.fakePipeStart = [x - 5, y, 0]  // 5m west
-        plugin.fakePipeEnd = [x + 5, y, 0]    // 5m east
+        // Create a fake pipe that is north of the user, 2m below, and 20m long
+        plugin.fakePipeStart = [x, y + 10, -2]  // North of user, 2m below
+        plugin.fakePipeEnd = [x, y + 30, -2]    // 20m further north, 2m below
         plugin.points = [
           [x + 5, y,     0],
           [x,     y + 5, 0],
@@ -1181,7 +1182,7 @@ Item {
 
             geometry: ProceduralMesh {
               property real segments: 16
-              property real tubeRadius: 0.05
+              property real tubeRadius: 0.15  // Increased from 0.05 to 0.15 for better visibility
               property var meshArrays: null  // Initialize to null instead of binding
 
               positions: meshArrays ? meshArrays.verts : []
@@ -1256,8 +1257,8 @@ Item {
 
             materials: [
               DefaultMaterial {
-                diffuseColor: "red"
-                specularAmount: 0.5
+                diffuseColor: "purple"  // Changed from red to purple
+                specularAmount: 0.7     // Increased specular amount for better visibility
               }
             ]
           }
