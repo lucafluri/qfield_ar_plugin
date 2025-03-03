@@ -689,8 +689,7 @@ Item {
         if (geometry) {
           try {
             // Instead of creating a CoordinateTransformer, we'll use QgsGeometry's transform method directly
-            transformedGeometry = geometry.clone();
-            
+            transformedGeometry = geometry.copy();
             // Create a QgsCoordinateTransform object
             let transform = QgsCoordinateTransform(srcCrs, destCrs, QgsProject.instance.transformContext());
             
