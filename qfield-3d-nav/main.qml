@@ -1456,7 +1456,7 @@ Item {
             // Instead of creating a CoordinateTransformer, we'll use QgsGeometry's transform method directly
             let transformedGeometry = geometry;
             // Create a QgsCoordinateTransform object
-            let transform = QgsCoordinateTransform(srcCrs, destCrs, qgsProject.instance.transformContext());
+            let transform = QgsCoordinateTransform(srcCrs, destCrs, qgisProject.instance.transformContext());
             
             // Apply the transformation to the geometry
             transformedGeometry.transform(transform);
