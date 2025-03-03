@@ -937,7 +937,6 @@ Item {
         brightness: 0.8
         color: "white"
         ambientColor: "white"
-        ambientIntensity: 0.2
       }
       
       // Additional lights to illuminate the top of the pipe
@@ -946,7 +945,6 @@ Item {
         brightness: 0.6
         color: "white"
         ambientColor: "white"
-        ambientIntensity: 0.1
       }
       
       PointLight {
@@ -954,7 +952,6 @@ Item {
         brightness: 0.5
         color: "#ffffee"  // Slightly warm light
         ambientColor: "#ffffee"
-        ambientIntensity: 0.1
       }
       
       PointLight {
@@ -962,7 +959,6 @@ Item {
         brightness: 0.5
         color: "#eeffff"  // Slightly cool light
         ambientColor: "#eeffff"
-        ambientIntensity: 0.1
       }
 
       PerspectiveCamera {
