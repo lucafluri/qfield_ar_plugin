@@ -689,7 +689,7 @@ Item {
         if (geometry) {
           try {
             // Create a proper QgsQuickCoordinateTransformer
-            let transformer = QgsQuickCoordinateTransformer.createObject(plugin);
+            let transformer = CoordinateTransformer.createObject(plugin);
             
             // Configure the transformer
             transformer.sourceCrs = srcCrs;
