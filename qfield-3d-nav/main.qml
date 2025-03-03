@@ -1436,53 +1436,53 @@ Item {
         logMsg("Error: Cannot transform null geometry");
         return null;
       }
-
-      const srcCrs = layerCRS;
-      const destCrs = getPositionCrs();
-
-      logMsg("Transforming from: " + (srcCrs ? srcCrs.authid : "Unknown") + 
-             " to: " + (destCrs ? destCrs.authid : "Unknown"));
       
-      if (srcCrs && destCrs && srcCrs.authid === destCrs.authid) {
-        logMsg("Layer and position use the same CRS, no transformation needed");
-        return geometry;
-      }
+      // Get the project CRS
+      let projectCRS = qgisProject.crs;
       
-      // Create a new geometry in the projected CRS
-      if (srcCrs && destCrs) {
-        let transformedGeometry = null;
-        if (geometry) {
-          try {
-            // Instead of creating a CoordinateTransformer, we'll use QgsGeometry's transform method directly
-            let transformedGeometry = geometry;
-            // Create a QgsCoordinateTransform object
-            let transform = QgsCoordinateTransform(srcCrs, destCrs, qgisProject.transformContext);
-            
-            // Apply the transformation to the geometry
-            transformedGeometry.transform(transform);
-            
-            logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
-            return transformedGeometry;
-          } catch (error) {
-            logMsg("Error transforming geometry: " + error.toString());
-            transformedGeometry = geometry; // Fallback to original geometry
-          }
+      // Create a temporary component for the coordinate transformer
+      let transformerComponent = Qt.createComponent("Rectangle {
+        property CoordinateTransformer ct: CoordinateTransformer {
+          sourceCrs: layerCRS
+          destinationCrs: projectCRS
+          transformContext: qgisProject.transformContext
         }
+      }");
+      
+      if (transformerComponent.status === Component.Ready) {
+        // Create an instance of the component
+        let transformerInstance = transformerComponent.createObject(plugin);
         
-        if (transformedGeometry) {
-          logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
-          return transformedGeometry;
+        if (transformerInstance) {
+          try {
+            // Clone the geometry to avoid modifying the original
+            let transformedGeometry = geometry.clone();
+            
+            // Apply the transformation using the transformer
+            transformedGeometry.transform(transformerInstance.ct);
+            
+            // Clean up the temporary component instance
+            transformerInstance.destroy();
+            
+            return transformedGeometry;
+          } catch (e) {
+            logMsg("Error during transformation: " + e.toString());
+            if (transformerInstance) {
+              transformerInstance.destroy();
+            }
+            return null;
+          }
         } else {
-          logMsg("Warning: Transformation failed, using original geometry");
-          return geometry;
+          logMsg("Error creating transformer instance");
+          return null;
         }
       } else {
-        logMsg("Warning: Cannot transform, missing CRS information");
-        return geometry;
+        logMsg("Error creating transformer component: " + transformerComponent.errorString());
+        return null;
       }
     } catch (e) {
       logMsg("Error in transformGeometryToProjectedCRS: " + e.toString());
-      return geometry;
+      return null;
     }
   }
   
@@ -1543,6 +1543,4 @@ Item {
       return null;
     }
   }
-  
-  
 }
