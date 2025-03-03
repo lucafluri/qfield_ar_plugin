@@ -883,7 +883,7 @@ Item {
 
         plugin.currentPosition = [x, y, 0]
         // Create a fake pipe that is north of the user, 2m below, and 20m long
-        plugin.fakePipeStart = [x, y, -2]  // North of user, 2m below
+        plugin.fakePipeStart = [x, y-5, -2]  // North of user, 2m below
         plugin.fakePipeEnd = [x, y + 30, -2]    // 20m further north, 2m below
         plugin.points = [
           [x + 5, y,     0],
@@ -928,10 +928,41 @@ Item {
 
       environment: SceneEnvironment {
         antialiasingMode: SceneEnvironment.ProgressiveAA
+        clearColor: "transparent"  // Make sure the background is transparent
       }
 
+      // Main light at camera position
       PointLight {
         position: Qt.vector3d(0, 0, 0)
+        brightness: 0.8
+        color: "white"
+        ambientColor: "white"
+        ambientIntensity: 0.2
+      }
+      
+      // Additional lights to illuminate the top of the pipe
+      PointLight {
+        position: Qt.vector3d(0, 0, 5)  // Light above the scene
+        brightness: 0.6
+        color: "white"
+        ambientColor: "white"
+        ambientIntensity: 0.1
+      }
+      
+      PointLight {
+        position: Qt.vector3d(5, 5, 3)  // Light from top-right
+        brightness: 0.5
+        color: "#ffffee"  // Slightly warm light
+        ambientColor: "#ffffee"
+        ambientIntensity: 0.1
+      }
+      
+      PointLight {
+        position: Qt.vector3d(-5, 5, 3)  // Light from top-left
+        brightness: 0.5
+        color: "#eeffff"  // Slightly cool light
+        ambientColor: "#eeffff"
+        ambientIntensity: 0.1
       }
 
       PerspectiveCamera {
@@ -1268,25 +1299,25 @@ Item {
         }
 
         // Points visualization
-        Repeater3D {
-          model: plugin.points
+        // Repeater3D {
+        //   model: plugin.points
 
-          delegate: Model {
-            position: Qt.vector3d(
-                          modelData[0] - plugin.currentPosition[0],
-                          modelData[1] - plugin.currentPosition[1],
-                          modelData[2] || 0)
-            source: "#Sphere"
-            scale: Qt.vector3d(0.01, 0.01, 0.01)
+        //   delegate: Model {
+        //     position: Qt.vector3d(
+        //                   modelData[0] - plugin.currentPosition[0],
+        //                   modelData[1] - plugin.currentPosition[1],
+        //                   modelData[2] || 0)
+        //     source: "#Sphere"
+        //     scale: Qt.vector3d(0.01, 0.01, 0.01)
 
-            materials: [
-              DefaultMaterial {
-                diffuseColor: index === 0 ? "green" : "blue"
-                specularAmount: 0.5
-              }
-            ]
-          }
-        }
+        //     materials: [
+        //       DefaultMaterial {
+        //         diffuseColor: index === 0 ? "green" : "blue"
+        //         specularAmount: 0.5
+        //       }
+        //     ]
+        //   }
+        // }
       }
     }
 
