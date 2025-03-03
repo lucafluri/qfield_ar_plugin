@@ -688,69 +688,17 @@ Item {
         let transformedGeometry = null;
         if (geometry) {
           try {
-            // Create a proper QgsQuickCoordinateTransformer
-            let transformer = CoordinateTransformer.createObject(plugin);
-            
-            // Configure the transformer
-            transformer.sourceCrs = srcCrs;
-            transformer.destinationCrs = destCrs;
-            transformer.transformContext = QgsProject.instance.transformContext();
-            
-            // Clone the geometry and transform each vertex
+            // Instead of creating a CoordinateTransformer, we'll use QgsGeometry's transform method directly
             transformedGeometry = geometry.clone();
             
-            // Get vertices from the geometry wrapper
-            let wrapper = geometryWrapperComponentGlobal.createObject(null, {
-              "qgsGeometry": geometry,
-              "crs": srcCrs
-            });
+            // Create a QgsCoordinateTransform object
+            let transform = QgsCoordinateTransform(srcCrs, destCrs, QgsProject.instance.transformContext());
             
-            if (wrapper) {
-              const vertices = wrapper.getVerticesAsArray();
-              if (vertices && vertices.length > 0) {
-                logMsg("Transforming " + vertices.length + " vertices");
-                
-                // Create arrays for transformed vertices
-                let transformedVertices = [];
-                
-                // Transform each vertex
-                for (let i = 0; i < vertices.length; i++) {
-                  const vertex = vertices[i];
-                  
-                  // Create a QgsPoint from the vertex
-                  let point = QgsPoint(vertex.x, vertex.y, vertex.z || 0);
-                  
-                  // Transform the point
-                  transformer.sourcePosition = point;
-                  let transformedPoint = transformer.projectedPosition;
-                  
-                  // Add to transformed vertices
-                  transformedVertices.push({
-                    x: transformedPoint.x,
-                    y: transformedPoint.y,
-                    z: transformedPoint.z || 0
-                  });
-                }
-                
-                // Create a new geometry from the transformed vertices
-                if (transformedVertices.length > 0) {
-                  // Convert to QgsPointXY array for creating a polyline
-                  let pointsXY = [];
-                  for (let i = 0; i < transformedVertices.length; i++) {
-                    pointsXY.push(QgsPointXY(transformedVertices[i].x, transformedVertices[i].y));
-                  }
-                  
-                  // Create a new geometry from the transformed points
-                  transformedGeometry = QgsGeometry.fromPolylineXY(pointsXY);
-                }
-              }
-              
-              // Clean up the wrapper
-              wrapper.destroy();
-            }
+            // Apply the transformation to the geometry
+            transformedGeometry.transform(transform);
             
-            // Clean up the transformer
-            transformer.destroy();
+            logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
+            return transformedGeometry;
           } catch (error) {
             logMsg("Error transforming geometry: " + error.toString());
             transformedGeometry = geometry; // Fallback to original geometry
