@@ -883,7 +883,7 @@ Item {
 
         plugin.currentPosition = [x, y, 0]
         // Create a fake pipe that is north of the user, 2m below, and 20m long
-        plugin.fakePipeStart = [x, y + 10, -2]  // North of user, 2m below
+        plugin.fakePipeStart = [x, y, -2]  // North of user, 2m below
         plugin.fakePipeEnd = [x, y + 30, -2]    // 20m further north, 2m below
         plugin.points = [
           [x + 5, y,     0],
@@ -1175,8 +1175,9 @@ Item {
 
         // Pipe visualization using Repeater3D
         Repeater3D {
-          model: plugin.fakePipeStart && plugin.fakePipeEnd ? 1 : 0  // Only create one pipe when we have start/end
-
+          // model: plugin.fakePipeStart && plugin.fakePipeEnd ? 1 : 0  // Only create one pipe when we have start/end
+          model: 1
+          
           delegate: Model {
             position: Qt.vector3d(0, 0, 0)  // Position is handled in the mesh
 
