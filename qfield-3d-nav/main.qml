@@ -1175,49 +1175,50 @@ Item {
 
         // Pipe visualization using Repeater3D
         Repeater3D {
-          // model: plugin.fakePipeStart && plugin.fakePipeEnd ? 1 : 0  // Only create one pipe when we have start/end
           model: 1
           
           delegate: Model {
             position: Qt.vector3d(0, 0, 0)  // Position is handled in the mesh
 
             geometry: ProceduralMesh {
-              property real segments: 16
-              property real tubeRadius: 0.15  // Increased from 0.05 to 0.15 for better visibility
-              property var meshArrays: null  // Initialize to null instead of binding
+              property real segments: 10
+              property real tubeRadius: 0.15
+              property var meshArrays: generateTube(segments, tubeRadius)
 
-              positions: meshArrays ? meshArrays.verts : []
-              normals: meshArrays ? meshArrays.normals : []
-              indexes: meshArrays ? meshArrays.indices : []
-
-              Component.onCompleted: {
-                meshArrays = generateTube(segments, tubeRadius)
-              }
+              positions: meshArrays.verts
+              normals: meshArrays.normals
+              indexes: meshArrays.indices
 
               function generateTube(segments: real, tubeRadius: real) {
                 let verts = []
                 let normals = []
                 let indices = []
-                let uvs = []
+                let uvs = [] // not used here
 
                 // Create position array from start to end point
                 let pos = []
                 if (plugin.fakePipeStart && plugin.fakePipeEnd) {
+                  // Get the start and end points relative to current position
+                  const startX = plugin.fakePipeStart[0] - plugin.currentPosition[0]
+                  const startY = plugin.fakePipeStart[1] - plugin.currentPosition[1]
+                  const startZ = plugin.fakePipeStart[2] || 0
+                  
+                  const endX = plugin.fakePipeEnd[0] - plugin.currentPosition[0]
+                  const endY = plugin.fakePipeEnd[1] - plugin.currentPosition[1]
+                  const endZ = plugin.fakePipeEnd[2] || 0
+                  
+                  // Create a path with multiple points for a more complex pipe
                   pos = [
-                    [
-                      plugin.fakePipeStart[0] - plugin.currentPosition[0],
-                      plugin.fakePipeStart[1] - plugin.currentPosition[1],
-                      plugin.fakePipeStart[2] || 0
-                    ],
-                    [
-                      plugin.fakePipeEnd[0] - plugin.currentPosition[0],
-                      plugin.fakePipeEnd[1] - plugin.currentPosition[1],
-                      plugin.fakePipeEnd[2] || 0
-                    ]
+                    [startX, startY, startZ],
+                    [startX + (endX - startX) * 0.33, startY + (endY - startY) * 0.33, startZ + (endZ - startZ) * 0.33],
+                    [startX + (endX - startX) * 0.66, startY + (endY - startY) * 0.66, startZ + (endZ - startZ) * 0.66],
+                    [endX, endY, endZ]
                   ]
+                } else {
+                  // Default pipe if no coordinates are available
+                  pos = [[0,0,0],[0,3,0],[-3,3,0],[-3,2,0]]
                 }
 
-                // Generate vertices and normals
                 for (let i = 0; i < pos.length; ++i) {
                   for (let j = 0; j <= segments; ++j) {
                     let v = j / segments * Math.PI * 2
@@ -1239,7 +1240,6 @@ Item {
                   }
                 }
 
-                // Generate indices for triangles
                 for (let i = 0; i < pos.length - 1; ++i) {
                   for (let j = 0; j < segments; ++j) {
                     let a = (segments + 1) * i + j
@@ -1247,6 +1247,8 @@ Item {
                     let c = (segments + 1) * (i + 1) + j + 1
                     let d = (segments + 1) * i + j + 1
 
+                    // Generate two triangles for each quad in the mesh
+                    // Adjust order to be counter-clockwise
                     indices.push(a, d, b)
                     indices.push(b, d, c)
                   }
@@ -1258,8 +1260,8 @@ Item {
 
             materials: [
               DefaultMaterial {
-                diffuseColor: "purple"  // Changed from red to purple
-                specularAmount: 0.7     // Increased specular amount for better visibility
+                diffuseColor: "purple"  // Changed from "red" to "purple"
+                specularAmount: 0.5     // Increased from 0.25 to 0.5
               }
             ]
           }
