@@ -1219,18 +1219,9 @@ Item {
         // Perform detailed geometry analysis
         analyzeGeometry(feature.geometry);
         
-        // Add color property to the feature - use distinct colors for each pipe
-        const pipeColors = [
-          Qt.rgba(0.2, 0.6, 1.0, 1.0),  // Blue
-          Qt.rgba(0.8, 0.2, 0.2, 1.0),  // Red
-          Qt.rgba(0.2, 0.8, 0.2, 1.0)   // Green
-        ];
-        const featureColor = pipeColors[featuresFound % pipeColors.length];
-        
         pipeFeatures.push({
           geometry: feature.geometry,
           id: feature.id,
-          color: featureColor
         });
         
         featuresFound++;
