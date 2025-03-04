@@ -1453,15 +1453,12 @@ Item {
         let transformedGeometry = null;
         if (geometry) {
           try {
-            // Instead of creating a CoordinateTransformer, we'll use QgsGeometry's transform method directly
             let transformedGeometry = geometry;
-            // Create a QgsCoordinateTransform object
-            let transform = QgsCoordinateTransform(srcCrs, destCrs, qgisProject.transformContext);
-            
-            // Apply the transformation to the geometry
-            transformedGeometry.transform(transform);
-            
-            logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
+            if (transformedGeometry.transform(destCrs)) {
+              logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
+            } else {
+              logMsg("Transformation failed");
+            }
             return transformedGeometry;
           } catch (error) {
             logMsg("Error transforming geometry: " + error.toString());
