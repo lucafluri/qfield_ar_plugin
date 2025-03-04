@@ -1452,42 +1452,146 @@ Item {
       if (srcCrs && destCrs) {
         let transformedGeometry = null;
         if (geometry) {
-          try {
-            // Use the CoordinateTransformer property to transform the geometry
-           // Create a CoordinateTransformer object at runtime
-            let transformer = Qt.createQmlObject(`
-              import QtQuick
-              import org.qfield
-              import org.qgis
+          // Extract vertices from the geometry
+          let vertices = [];
+          
+          // Try to get vertices from the geometry
+          if (typeof geometry.asWkt === 'function') {
+            const wkt = geometry.asWkt();
+            logMsg("Original WKT: " + wkt);
+            
+            // Extract vertices from WKT
+            if (wkt.startsWith("LINESTRING") || wkt.startsWith("LineString")) {
+              // Extract coordinates from LineString WKT
+              const coordsStr = wkt.substring(wkt.indexOf('(') + 1, wkt.lastIndexOf(')'));
+              const coordPairs = coordsStr.split(',');
               
-              CoordinateTransformer {
-                sourceCrs: Qt.binding(function() { return srcCrs })
-                destinationCrs: Qt.binding(function() { return destCrs })
-                sourcePosition: Qt.binding(function() { return geometry })
-                transformContext: Qt.binding(function() { return qgisProject.transformContext })
+              for (let i = 0; i < coordPairs.length; i++) {
+                const xy = coordPairs[i].trim().split(' ');
+                if (xy.length >= 2) {
+                  vertices.push({
+                    x: parseFloat(xy[0]),
+                    y: parseFloat(xy[1]),
+                    z: xy.length > 2 ? parseFloat(xy[2]) : 0
+                  });
+                }
               }
-            `, plugin, "dynamicTransformer");
-            
-            // Get the projected position
-            let transformedGeometry = transformer.projectedPosition;
-            
-            // Clean up the temporary object
-            transformer.destroy();
-
-            if (transformedGeometry) {
-              logMsg("Successfully transformed geometry using CoordinateTransformer");
-            } else {
-              logMsg("CoordinateTransformer failed to transform geometry");
+            } else if (wkt.startsWith("MULTILINESTRING") || wkt.startsWith("MultiLineString")) {
+              // Handle MultiLineString WKT
+              logMsg("Extracting vertices from MultiLineString");
+              
+              // Extract content between the outer parentheses
+              const content = wkt.substring(wkt.indexOf("((") + 2, wkt.lastIndexOf("))"));
+              const lineStrings = content.split('),(');
+              
+              for (let i = 0; i < lineStrings.length; i++) {
+                const coordPairs = lineStrings[i].split(',');
+                
+                for (let j = 0; j < coordPairs.length; j++) {
+                  const xy = coordPairs[j].trim().split(' ');
+                  if (xy.length >= 2) {
+                    vertices.push({
+                      x: parseFloat(xy[0]),
+                      y: parseFloat(xy[1]),
+                      z: xy.length > 2 ? parseFloat(xy[2]) : 0
+                    });
+                  }
+                }
+              }
             }
-            return transformedGeometry;
-          } catch (error) {
-            logMsg("Error transforming geometry: " + error.toString());
-            transformedGeometry = geometry; // Fallback to original geometry
           }
-        }
-        
-        if (transformedGeometry) {
-          logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
+          
+          logMsg("Extracted " + vertices.length + " vertices from geometry");
+          
+          if (vertices.length > 0) {
+            // Transform each vertex individually
+            let transformedVertices = [];
+            
+            for (let i = 0; i < vertices.length; i++) {
+              const vertex = vertices[i];
+              
+              // Create a CoordinateTransformer for this point
+              let pointTransformer = Qt.createQmlObject(`
+                import QtQuick
+                import org.qfield
+                import org.qgis
+                
+                CoordinateTransformer {
+                  sourceCrs: Qt.binding(function() { return srcCrs })
+                  destinationCrs: Qt.binding(function() { return destCrs })
+                  sourcePosition: Qt.binding(function() { 
+                    return QgsPoint(${vertex.x}, ${vertex.y}, ${vertex.z}) 
+                  })
+                  transformContext: Qt.binding(function() { return qgisProject.transformContext })
+                }
+              `, plugin, "pointTransformer" + i);
+              
+              // Get the transformed point
+              const transformedPoint = pointTransformer.projectedPosition;
+              
+              if (transformedPoint) {
+                transformedVertices.push(transformedPoint);
+                logMsg("Transformed point " + i + ": " + 
+                       vertex.x + "," + vertex.y + " -> " + 
+                       transformedPoint.x() + "," + transformedPoint.y());
+              } else {
+                logMsg("Failed to transform point " + i);
+              }
+              
+              // Clean up
+              pointTransformer.destroy();
+            }
+            
+            if (transformedVertices.length > 0) {
+              // Create a new geometry from the transformed vertices
+              // For simplicity, we'll create a QgsGeometry from WKT
+              let wktType = "";
+              let wktCoords = "";
+              
+              if (vertices.length === 1) {
+                // Point
+                wktType = "POINT";
+                const p = transformedVertices[0];
+                wktCoords = p.x() + " " + p.y() + (p.z ? " " + p.z() : "");
+              } else {
+                // LineString or MultiLineString
+                if (geometry.asWkt().startsWith("MULTILINESTRING")) {
+                  wktType = "MULTILINESTRING";
+                  wktCoords = "(";
+                  
+                  // For simplicity, we'll create a single linestring
+                  for (let i = 0; i < transformedVertices.length; i++) {
+                    const p = transformedVertices[i];
+                    if (i > 0) wktCoords += ", ";
+                    wktCoords += p.x() + " " + p.y() + (p.z ? " " + p.z() : "");
+                  }
+                  
+                  wktCoords += ")";
+                } else {
+                  wktType = "LINESTRING";
+                  
+                  for (let i = 0; i < transformedVertices.length; i++) {
+                    const p = transformedVertices[i];
+                    if (i > 0) wktCoords += ", ";
+                    wktCoords += p.x() + " " + p.y() + (p.z ? " " + p.z() : "");
+                  }
+                }
+              }
+              
+              const newWkt = wktType + "(" + wktCoords + ")";
+              logMsg("Created new geometry WKT: " + newWkt);
+              
+              // Create new geometry from WKT
+              transformedGeometry = QgsGeometry.fromWkt(newWkt);
+              
+              logMsg("Successfully created transformed geometry with " + 
+                     transformedVertices.length + " vertices");
+            } else {
+              logMsg("No vertices were successfully transformed");
+            }
+          } else {
+            logMsg("No vertices found in the geometry to transform");
+          }
           return transformedGeometry;
         } else {
           logMsg("Warning: Transformation failed, using original geometry");
