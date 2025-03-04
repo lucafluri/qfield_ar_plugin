@@ -901,6 +901,15 @@ Item {
     }
   }
 
+  // New property for CoordinateTransformer
+  property CoordinateTransformer ct: CoordinateTransformer {
+    id: _ct
+    sourceCrs: geometryWrapper.crs
+    sourcePosition: modelData
+    destinationCrs: mapCanvas.mapSettings.destinationCrs
+    transformContext: qgisProject.transformContext
+  }
+
   // Initialize when plugin loads
   Component.onCompleted: {
     logMsg("QField 3D Navigation Plugin loaded");
@@ -1453,11 +1462,12 @@ Item {
         let transformedGeometry = null;
         if (geometry) {
           try {
-            let transformedGeometry = geometry;
-            if (transformedGeometry.transform(destCrs)) {
-              logMsg("Successfully transformed geometry from " + srcCrs.authid + " to " + destCrs.authid);
+            // Use the CoordinateTransformer property to transform the geometry
+            let transformedGeometry = ct.transform(geometry);
+            if (transformedGeometry) {
+              logMsg("Successfully transformed geometry using CoordinateTransformer");
             } else {
-              logMsg("Transformation failed");
+              logMsg("CoordinateTransformer failed to transform geometry");
             }
             return transformedGeometry;
           } catch (error) {
