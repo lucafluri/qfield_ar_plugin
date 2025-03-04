@@ -1457,6 +1457,7 @@ Item {
            // Create a CoordinateTransformer object at runtime
             let transformer = Qt.createQmlObject(`
               import QtQuick
+              import org.qfield
               import org.qgis
               
               CoordinateTransformer {
