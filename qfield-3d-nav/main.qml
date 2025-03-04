@@ -1507,7 +1507,7 @@ Item {
             // Transform each vertex individually
             let transformedVertices = [];
             
-            for (let i = 0; i < vertices.length; i++) {
+            for (let i = 0; i  vertices.length; i++) {
               const vertex = vertices[i];
               
               // Create a CoordinateTransformer for this point
@@ -1516,15 +1516,14 @@ Item {
                 import org.qfield
                 import org.qgis
                 
-                CoordinateTransformer {
-                  sourceCrs: Qt.binding(function() { return srcCrs })
-                  destinationCrs: Qt.binding(function() { return destCrs })
-                  sourcePosition: Qt.binding(function() { 
-                    return QgsPoint(${vertex.x}, ${vertex.y}, ${vertex.z}) 
-                  })
-                  transformContext: Qt.binding(function() { return qgisProject.transformContext })
-                }
-              `, plugin, "pointTransformer" + i);
+
+              CoordinateTransformer {
+                sourceCrs: Qt.binding(function() { return srcCrs })
+                destinationCrs: Qt.binding(function() { return destCrs })
+                sourcePosition: Qt.binding(function() { return geometry })
+                transformContext: Qt.binding(function() { return qgisProject.transformContext })
+              }
+            `, plugin, "pointTransformer" + i);
               
               // Get the transformed point
               const transformedPoint = pointTransformer.projectedPosition;
@@ -1532,7 +1531,7 @@ Item {
               if (transformedPoint) {
                 transformedVertices.push(transformedPoint);
                 logMsg("Transformed point " + i + ": " + 
-                       vertex.x + "," + vertex.y + " -> " + 
+                       vertex.x + "," + vertex.y + " - " + 
                        transformedPoint.x() + "," + transformedPoint.y());
               } else {
                 logMsg("Failed to transform point " + i);
