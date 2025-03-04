@@ -901,15 +901,6 @@ Item {
     }
   }
 
-  // New property for CoordinateTransformer
-  property CoordinateTransformer ct: CoordinateTransformer {
-    id: _ct
-    sourceCrs: geometryWrapper.crs
-    sourcePosition: modelData
-    destinationCrs: mapCanvas.mapSettings.destinationCrs
-    transformContext: qgisProject.transformContext
-  }
-
   // Initialize when plugin loads
   Component.onCompleted: {
     logMsg("QField 3D Navigation Plugin loaded");
@@ -1463,12 +1454,24 @@ Item {
         if (geometry) {
           try {
             // Use the CoordinateTransformer property to transform the geometry
-            ct.setSourceCrs(srcCrs);
-            ct.setSourcePosition(geometry);
-            ct.setDestinationCrs(destCrs);
-            ct.updatePosition();
+           // Create a CoordinateTransformer object at runtime
+            let transformer = Qt.createQmlObject(`
+              import QtQuick
+              import org.qgis
+              
+              CoordinateTransformer {
+                sourceCrs: Qt.binding(function() { return srcCrs })
+                destinationCrs: Qt.binding(function() { return destCrs })
+                sourcePosition: Qt.binding(function() { return geometry })
+                transformContext: Qt.binding(function() { return qgisProject.transformContext })
+              }
+            `, plugin, "dynamicTransformer");
             
-            let transformedGeometry = ct.projectedPosition();
+            // Get the projected position
+            let transformedGeometry = transformer.projectedPosition;
+            
+            // Clean up the temporary object
+            transformer.destroy();
 
             if (transformedGeometry) {
               logMsg("Successfully transformed geometry using CoordinateTransformer");
