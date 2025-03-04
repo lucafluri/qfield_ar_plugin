@@ -1507,7 +1507,7 @@ Item {
             // Transform each vertex individually
             let transformedVertices = [];
             
-            for (let i = 0; i  vertices.length; i++) {
+            for (let i = 0; i < vertices.length; i++) {
               const vertex = vertices[i];
               
               // Create a CoordinateTransformer for this point
