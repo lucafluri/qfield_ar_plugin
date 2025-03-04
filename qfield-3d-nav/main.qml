@@ -1463,7 +1463,7 @@ Item {
         if (geometry) {
           try {
             // Use the CoordinateTransformer property to transform the geometry
-            let transformedGeometry = ct.transform(geometry);
+            let transformedGeometry = ct.transformPosition(geometry);
             if (transformedGeometry) {
               logMsg("Successfully transformed geometry using CoordinateTransformer");
             } else {
