@@ -1515,13 +1515,13 @@ Item {
                 import QtQuick
                 import org.qfield
                 import org.qgis
-                
+              
 
               CoordinateTransformer {
-                sourceCrs: Qt.binding(function() { return srcCrs })
-                destinationCrs: Qt.binding(function() { return destCrs })
-                sourcePosition: Qt.binding(function() { return geometry })
-                transformContext: Qt.binding(function() { return qgisProject.transformContext })
+                sourceCrs: srcCrs 
+                destinationCrs: destCrs 
+                sourcePosition: geometry
+                transformContext: qgisProject.transformContext
               }
             `, plugin, "pointTransformer" + i);
               
